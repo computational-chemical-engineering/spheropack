@@ -18,7 +18,7 @@ import time
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-LEGACY_DIR = os.environ.get("LEGACY_DIR", "/home/eajfpeters/Code/packing")
+LEGACY_DIR = os.environ.get("LEGACY_DIR", os.path.join(os.path.dirname(__file__), "..", "..", "..", "packing"))
 MAX_WORKERS = 12
 TUBE_BIN = os.path.join(LEGACY_DIR, "build", "generate_packed_tube")
 

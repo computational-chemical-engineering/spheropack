@@ -1,7 +1,7 @@
 {
  "meta": {
   "date": "2026-10-01T13:12:26+02:00",
-  "legacy_dir": "/home/eajfpeters/Code/packing",
+  "legacy_dir": "$LEGACY_DIR",
   "legacy_commit": "19813daa6decc3d94f302c4873ce312987700862",
   "description": "Throughput of legacy code, N=10000. Timings taken with up to 12 concurrent jobs on the machine.",
   "N": 10000,
@@ -16,7 +16,7 @@
   ],
   "growth_rate": 0.16,
   "cap_per_particle": 10000,
-  "build_command": "g++ -O2 -std=c++17 -I/home/eajfpeters/Code/packing /home/eajfpeters/Code/spheropack/tests/baselines/legacy_driver.cpp -o /tmp/tmplf8veowh/legacy_driver",
+  "build_command": "g++ -O2 -std=c++17 -I$LEGACY_DIR ./tests/baselines/legacy_driver.cpp -o /tmp/tmplf8veowh/legacy_driver",
   "elapsed_s": 2.780860424041748
  },
  "runs": [

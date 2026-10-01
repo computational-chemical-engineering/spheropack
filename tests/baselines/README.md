@@ -1,7 +1,7 @@
 # Legacy regression baselines
 
 Statistical baselines from the legacy C++ event-driven packing code
-(`/home/eajfpeters/Code/packing`), to derive test thresholds for the rewrite.
+(directory given by `LEGACY_DIR`, default `../packing` next to this repository), to derive test thresholds for the rewrite.
 
 Files
 - `legacy_driver.cpp`: periodic 3D monodisperse driver (args: `N seed target_phi growrate cap_per_particle`),
@@ -18,7 +18,7 @@ Files
 - `tube_D7.json`: tube D=7d packings (overlap, wall penetration, radial density histogram).
 
 Regenerate
-    LEGACY_DIR=/path/to/packing /home/eajfpeters/Code/packing/.venv/bin/python generate_baselines.py
+    LEGACY_DIR=/path/to/packing python generate_baselines.py
 (optional `--only n500 n27 slow speed tube`). Needs g++, Boost headers, numpy.
 
 Thresholds for tests are to be derived from the across-seed spreads stored in each `summary`.

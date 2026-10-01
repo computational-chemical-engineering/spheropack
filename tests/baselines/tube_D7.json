@@ -1,7 +1,7 @@
 {
  "meta": {
   "date": "2026-10-01T13:12:27+02:00",
-  "legacy_dir": "/home/eajfpeters/Code/packing",
+  "legacy_dir": "$LEGACY_DIR",
   "legacy_commit": "19813daa6decc3d94f302c4873ce312987700862",
   "description": "Packing in a tube (D = 7 d) with periodic axis. Histogram: sphere-centre distance from axis, number density per unit cross-section area / mean (uniform = 1).",
   "num_part": 725,
@@ -121,7 +121,7 @@
    ],
    "seed": 1,
    "wall_time_s": 0.17022395133972168,
-   "command": "/home/eajfpeters/Code/packing/build/generate_packed_tube --num_part=725 --part_diam=0.003 --tube_diam=0.021 --tube_length=0.05479969765684051 --growth_rate=106.66666 --seed=1 --file=/tmp/tmpn68ym3ua/tube.csv"
+   "command": "$LEGACY_DIR/build/generate_packed_tube --num_part=725 --part_diam=0.003 --tube_diam=0.021 --tube_length=0.05479969765684051 --growth_rate=106.66666 --seed=1 --file=/tmp/tmpn68ym3ua/tube.csv"
   },
   {
    "n_spheres": 725,
@@ -173,7 +173,7 @@
    ],
    "seed": 2,
    "wall_time_s": 0.8905775547027588,
-   "command": "/home/eajfpeters/Code/packing/build/generate_packed_tube --num_part=725 --part_diam=0.003 --tube_diam=0.021 --tube_length=0.05479969765684051 --growth_rate=106.66666 --seed=2 --file=/tmp/tmpb_x_euwj/tube.csv"
+   "command": "$LEGACY_DIR/build/generate_packed_tube --num_part=725 --part_diam=0.003 --tube_diam=0.021 --tube_length=0.05479969765684051 --growth_rate=106.66666 --seed=2 --file=/tmp/tmpb_x_euwj/tube.csv"
   },
   {
    "n_spheres": 725,
@@ -225,7 +225,7 @@
    ],
    "seed": 3,
    "wall_time_s": 0.1750175952911377,
-   "command": "/home/eajfpeters/Code/packing/build/generate_packed_tube --num_part=725 --part_diam=0.003 --tube_diam=0.021 --tube_length=0.05479969765684051 --growth_rate=106.66666 --seed=3 --file=/tmp/tmpznrj60zh/tube.csv"
+   "command": "$LEGACY_DIR/build/generate_packed_tube --num_part=725 --part_diam=0.003 --tube_diam=0.021 --tube_length=0.05479969765684051 --growth_rate=106.66666 --seed=3 --file=/tmp/tmpznrj60zh/tube.csv"
   },
   {
    "n_spheres": 725,
@@ -277,7 +277,7 @@
    ],
    "seed": 4,
    "wall_time_s": 1.1908087730407715,
-   "command": "/home/eajfpeters/Code/packing/build/generate_packed_tube --num_part=725 --part_diam=0.003 --tube_diam=0.021 --tube_length=0.05479969765684051 --growth_rate=106.66666 --seed=4 --file=/tmp/tmp4z_ccpa_/tube.csv"
+   "command": "$LEGACY_DIR/build/generate_packed_tube --num_part=725 --part_diam=0.003 --tube_diam=0.021 --tube_length=0.05479969765684051 --growth_rate=106.66666 --seed=4 --file=/tmp/tmp4z_ccpa_/tube.csv"
   },
   {
    "n_spheres": 725,
@@ -329,7 +329,7 @@
    ],
    "seed": 5,
    "wall_time_s": 0.5814762115478516,
-   "command": "/home/eajfpeters/Code/packing/build/generate_packed_tube --num_part=725 --part_diam=0.003 --tube_diam=0.021 --tube_length=0.05479969765684051 --growth_rate=106.66666 --seed=5 --file=/tmp/tmp_dowr3i5/tube.csv"
+   "command": "$LEGACY_DIR/build/generate_packed_tube --num_part=725 --part_diam=0.003 --tube_diam=0.021 --tube_length=0.05479969765684051 --growth_rate=106.66666 --seed=5 --file=/tmp/tmp_dowr3i5/tube.csv"
   },
   {
    "n_spheres": 725,
@@ -381,7 +381,7 @@
    ],
    "seed": 6,
    "wall_time_s": 0.5119264125823975,
-   "command": "/home/eajfpeters/Code/packing/build/generate_packed_tube --num_part=725 --part_diam=0.003 --tube_diam=0.021 --tube_length=0.05479969765684051 --growth_rate=106.66666 --seed=6 --file=/tmp/tmprxsz5zq2/tube.csv"
+   "command": "$LEGACY_DIR/build/generate_packed_tube --num_part=725 --part_diam=0.003 --tube_diam=0.021 --tube_length=0.05479969765684051 --growth_rate=106.66666 --seed=6 --file=/tmp/tmprxsz5zq2/tube.csv"
   },
   {
    "n_spheres": 725,
@@ -433,7 +433,7 @@
    ],
    "seed": 7,
    "wall_time_s": 0.17584991455078125,
-   "command": "/home/eajfpeters/Code/packing/build/generate_packed_tube --num_part=725 --part_diam=0.003 --tube_diam=0.021 --tube_length=0.05479969765684051 --growth_rate=106.66666 --seed=7 --file=/tmp/tmpwforj0a9/tube.csv"
+   "command": "$LEGACY_DIR/build/generate_packed_tube --num_part=725 --part_diam=0.003 --tube_diam=0.021 --tube_length=0.05479969765684051 --growth_rate=106.66666 --seed=7 --file=/tmp/tmpwforj0a9/tube.csv"
   },
   {
    "n_spheres": 725,
@@ -485,7 +485,7 @@
    ],
    "seed": 8,
    "wall_time_s": 0.25764036178588867,
-   "command": "/home/eajfpeters/Code/packing/build/generate_packed_tube --num_part=725 --part_diam=0.003 --tube_diam=0.021 --tube_length=0.05479969765684051 --growth_rate=106.66666 --seed=8 --file=/tmp/tmp81trwwc4/tube.csv"
+   "command": "$LEGACY_DIR/build/generate_packed_tube --num_part=725 --part_diam=0.003 --tube_diam=0.021 --tube_length=0.05479969765684051 --growth_rate=106.66666 --seed=8 --file=/tmp/tmp81trwwc4/tube.csv"
   },
   {
    "n_spheres": 725,
@@ -537,7 +537,7 @@
    ],
    "seed": 9,
    "wall_time_s": 0.20316457748413086,
-   "command": "/home/eajfpeters/Code/packing/build/generate_packed_tube --num_part=725 --part_diam=0.003 --tube_diam=0.021 --tube_length=0.05479969765684051 --growth_rate=106.66666 --seed=9 --file=/tmp/tmpgzduuzjq/tube.csv"
+   "command": "$LEGACY_DIR/build/generate_packed_tube --num_part=725 --part_diam=0.003 --tube_diam=0.021 --tube_length=0.05479969765684051 --growth_rate=106.66666 --seed=9 --file=/tmp/tmpgzduuzjq/tube.csv"
   },
   {
    "n_spheres": 725,
@@ -589,7 +589,7 @@
    ],
    "seed": 10,
    "wall_time_s": 1.4278607368469238,
-   "command": "/home/eajfpeters/Code/packing/build/generate_packed_tube --num_part=725 --part_diam=0.003 --tube_diam=0.021 --tube_length=0.05479969765684051 --growth_rate=106.66666 --seed=10 --file=/tmp/tmpmv03an00/tube.csv"
+   "command": "$LEGACY_DIR/build/generate_packed_tube --num_part=725 --part_diam=0.003 --tube_diam=0.021 --tube_length=0.05479969765684051 --growth_rate=106.66666 --seed=10 --file=/tmp/tmpmv03an00/tube.csv"
   }
  ],
  "summary": {

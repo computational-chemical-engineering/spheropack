@@ -1,7 +1,7 @@
 {
  "meta": {
   "date": "2026-10-01T13:12:20+02:00",
-  "legacy_dir": "/home/eajfpeters/Code/packing",
+  "legacy_dir": "$LEGACY_DIR",
   "legacy_commit": "19813daa6decc3d94f302c4873ce312987700862",
   "description": "Arrest density of legacy LS compression, d=1, periodic cube. Runs stop at the collision cap; phi_final is the density when the cap was hit. Growth rate rescaled to match the compression rate of packing.cpp (L=1 units).",
   "N": 500,
@@ -30,7 +30,7 @@
   "target_phi": 0.74,
   "growth_rate": 0.0213,
   "cap_per_particle": 10000,
-  "build_command": "g++ -O2 -std=c++17 -I/home/eajfpeters/Code/packing /home/eajfpeters/Code/spheropack/tests/baselines/legacy_driver.cpp -o /tmp/tmplf8veowh/legacy_driver",
+  "build_command": "g++ -O2 -std=c++17 -I$LEGACY_DIR ./tests/baselines/legacy_driver.cpp -o /tmp/tmplf8veowh/legacy_driver",
   "driver_args": "N seed target_phi growrate cap_per_particle",
   "elapsed_s": 43.21186923980713
  },
