@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-10-01)
 
 First release. A rewrite of the legacy event-driven Lubachevsky-Stillinger packing code
 as a header-only C++20 core with a Python interface.
