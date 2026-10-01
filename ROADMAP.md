@@ -66,30 +66,17 @@ rejection-free Monte Carlo method of Peters & de With, Phys. Rev. E 85, 026703
 | 5 | Rejection-free module, release 0.2.0 | two-particle chi-square p > 1e-3; U and g(r) match Metropolis (z < 4) for DPD and LJ |
 | 6 | Performance: profiling, cell-sorted storage, neighbour lists for polydisperse systems | at least 2x legacy collisions/s at N=1e4 near arrest, statistical suite unchanged |
 
-## Status (2026-10-01, evening)
+## Status (2026-10-01, release preparation)
 
-- Phases 0, 2 and 3 done; phase 1 done except a TestPyPI upload. First commit pushed
-  to the private GitHub repository; CI green on Linux, macOS and Windows.
-- Collision rule `elastic_growing` is the default (approved); `legacy` reproduces the
-  old code (on curved walls it separates at 1.01 times the growth speed, as the legacy
-  tube code did). `Jammed` protocol (approved) is the default stop for
-  `density="max"`.
-- Containers: periodic and walled boxes, `Cylinder` (periodic or capped), `SphereContainer`,
-  `Disk`; 2D and 3D; polydisperse radii.
-- Tests: 120 fast, 4 slow (legacy periodic statistics, legacy tube radial profile,
-  slow-growth equation of state), 13 C++. Code review by the think agent; all findings
-  fixed.
-- Docs: Sphinx site (algorithm, growth rate with sweep table, stopping criteria, CLI,
-  Python and C++ API), notebooks 01 quickstart, 02 compression and jamming, 03
-  structure analysis, 04 packed tubes. Doxygen for all headers, no warnings.
-- CLI: `spheropack pack` and the legacy drop-ins `legacy-periodic`, `legacy-tube`.
-- Speed (N = 1e4 to phi 0.55 and 0.58, one core, idle machine): legacy 2.6e5
-  collisions/s, new 2.65e5 to 3.1e5 (on par to +20%). With the default rule fewer
-  collisions are needed (0.58: 4.3e5 against 5.6e5), so 1.6 s against 2.2 s. The
-  phase 6 target (2x) is still open.
-- Next: user review of a first complete version; then phase 4 (wheels, TestPyPI,
-  PyPI 0.1.0, public repository, hosted documentation), phase 5 (rejection-free
-  module), phase 6 (performance).
+- Repository transferred to github.com/computational-chemical-engineering/spheropack
+  (private until the user approves the release).
+- Version 0.1.0 prepared: changelog, citation file, wheels for Linux (x86_64, aarch64),
+  macOS (arm64, x86_64) and Windows for Python 3.10, 3.11 and 3.12+ (stable ABI),
+  sdist checked with twine and installed and tested in a clean environment.
+- Remaining for the release: register the PyPI and TestPyPI trusted publishers
+  (user), TestPyPI dry run, user approval, then: make public, enable Pages, publish
+  release v0.1.0.
+- After 0.1.0: phase 5 (rejection-free module, 0.2.0), phase 6 (performance, 2x).
 
 ## Robustness rules for event prediction
 
