@@ -50,6 +50,6 @@ html_extra_path = []
 html_theme = "pydata_sphinx_theme"
 html_title = "spheropack"
 html_theme_options = {
-    "github_url": "https://github.com/eajfpeters/spheropack",
+    "github_url": "https://github.com/computational-chemical-engineering/spheropack",
     "show_toc_level": 2,
 }

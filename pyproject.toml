@@ -30,8 +30,10 @@ plot = ["matplotlib", "pyvista"]
 spheropack = "spheropack.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/eajfpeters/spheropack"
-Issues = "https://github.com/eajfpeters/spheropack/issues"
+Homepage = "https://computational-chemical-engineering.github.io/spheropack"
+Documentation = "https://computational-chemical-engineering.github.io/spheropack"
+Repository = "https://github.com/computational-chemical-engineering/spheropack"
+Issues = "https://github.com/computational-chemical-engineering/spheropack/issues"
 
 [tool.scikit-build]
 minimum-version = "build-system.requires"

@@ -26,9 +26,15 @@ stopping criteria (`--jammed-pressure`, `--max-pressure`, `--max-collisions`,
 options, same output format (`z,x,y,r`), and `--growth_rate` with its legacy meaning
 (a rate in 1/time, converted to the dimensionless growth rate as
 $\Gamma = g\,d/2$). It uses the legacy collision rule, so existing scripts give
-statistically the same packings.
+statistically the same packings, and like the legacy tool it does not stop on the
+pressure (only after $10^5$ collisions per sphere). `spheropack legacy-tube` does the
+same for `generate_packed_tube` (tube axis in the first output column). Both accept
+`--collision-rule elastic_growing`, which never gets stuck and is faster, at the price
+of a slightly different structure next to walls.
 
 ```bash
+spheropack legacy-tube --num_part=725 --part_diam=3e-3 --tube_diam=21e-3 \
+    --tube_length=0.0599 --growth_rate=106.67 --seed=1 --file=tube.dat
 spheropack legacy-periodic --num_part=50 --part_diam=3e-3 --box_size=0.0153 \
     --growth_rate=106.67 --seed=1 --file=periodic.dat --copy_periodic
 ```

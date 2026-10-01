@@ -17,13 +17,16 @@ def _axes(ax):
     return ax
 
 
-def _draw(ax, centres, radii, lengths, color, edgecolor):
+def _draw(ax, centres, radii, lengths, color, edgecolor, outline=None):
     from matplotlib.collections import PatchCollection
     from matplotlib.patches import Circle, Rectangle
 
     patches = [Circle(c, r) for c, r in zip(centres, radii)]
     ax.add_collection(PatchCollection(patches, facecolor=color, edgecolor=edgecolor, linewidth=0.4))
-    ax.add_patch(Rectangle((0, 0), lengths[0], lengths[1], fill=False, linewidth=1.0, edgecolor="k"))
+    if outline is None:
+        ax.add_patch(Rectangle((0, 0), lengths[0], lengths[1], fill=False, linewidth=1.0, edgecolor="k"))
+    else:  # circular container wall: (centre, radius)
+        ax.add_patch(Circle(outline[0], outline[1], fill=False, linewidth=1.0, edgecolor="k"))
     ax.set_xlim(0, lengths[0])
     ax.set_ylim(0, lengths[1])
     ax.set_aspect("equal")
@@ -35,7 +38,9 @@ def plot_disks(packing: Packing, ax=None, color="tab:blue", edgecolor="k", image
     if packing.dim != 2:
         raise ValueError("plot_disks needs a 2D packing; use plot_section for 3D")
     p = packing.periodic_images() if images else packing
-    return _draw(_axes(ax), p.positions, p.radii, packing.container.lengths, color, edgecolor)
+    ball = packing.container.ball
+    outline = None if ball is None else (ball.center, ball.radius)
+    return _draw(_axes(ax), p.positions, p.radii, packing.container.lengths, color, edgecolor, outline)
 
 
 def plot_section(
@@ -57,4 +62,10 @@ def plot_section(
         h -= lengths[axis] * np.round(h / lengths[axis])
     cut = np.abs(h) < p.radii
     radii = np.sqrt(p.radii[cut] ** 2 - h[cut] ** 2)
-    return _draw(_axes(ax), p.positions[cut][:, keep], radii, lengths[keep], color, edgecolor)
+    ball = packing.container.ball
+    outline = None
+    if ball is not None and all(ball.axes[k] for k in keep):  # the section shows a circle of the wall
+        h_wall = position - ball.center[axis] if ball.axes[axis] else 0.0
+        if abs(h_wall) < ball.radius:
+            outline = (np.asarray(ball.center)[keep], np.sqrt(ball.radius**2 - h_wall**2))
+    return _draw(_axes(ax), p.positions[cut][:, keep], radii, lengths[keep], color, edgecolor, outline)

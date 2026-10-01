@@ -29,6 +29,7 @@ cli
 notebooks/01_quickstart
 notebooks/02_compression_and_jamming
 notebooks/03_structure_analysis
+notebooks/04_packed_tubes
 ```
 
 ```{toctree}

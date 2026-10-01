@@ -57,13 +57,25 @@ nb::dict ls_pack(InArray1 radii, std::vector<double> lengths, std::vector<bool> 
                  double max_time, double timeout, double sync_interval, std::uint64_t seed,
                  const std::string& rule, std::optional<InArray2> positions,
                  double initial_scale, std::optional<InArray2> velocities,
-                 double jam_start_pressure, int jam_relax_windows, double jam_step) {
+                 double jam_start_pressure, int jam_relax_windows, double jam_step,
+                 double ball_radius, std::vector<bool> ball_axes, std::vector<double> ball_center) {
   if (lengths.size() != D || periodic.size() != D)
     throw nb::value_error("box lengths and periodic flags need one entry per dimension");
   spheropack::Box<D> box;
   for (int k = 0; k < D; ++k) {
     box.L[k] = lengths[k];
     box.periodic[k] = periodic[k];
+  }
+  if (!ball_axes.empty() && !(ball_radius > 0.0)) throw nb::value_error("ball radius must be positive");
+  if (ball_radius > 0.0) {
+    if (ball_axes.size() != D || ball_center.size() != D)
+      throw nb::value_error("ball axes and centre need one entry per dimension");
+    box.ball.active = true;
+    box.ball.radius = ball_radius;
+    for (int k = 0; k < D; ++k) {
+      box.ball.axes[k] = ball_axes[k];
+      box.ball.center[k] = ball_center[k];
+    }
   }
   spheropack::PackingOptions opt;
   opt.target_scale = target_scale;
@@ -200,7 +212,8 @@ void def_ls_pack(nb::module_& m, const char* name) {
         "growth_rate"_a, "max_pressure"_a, "jammed_pressure"_a, "stall_tol"_a, "stall_window"_a, "max_collisions"_a,
         "max_time"_a, "timeout"_a, "sync_interval"_a, "seed"_a, "rule"_a, "positions"_a.none(), "initial_scale"_a,
         "velocities"_a.none(), "jam_start_pressure"_a = 1e3, "jam_relax_windows"_a = 4,
-        "jam_step"_a = 0.2);
+        "jam_step"_a = 0.2,
+        "ball_radius"_a = 0.0, "ball_axes"_a = std::vector<bool>{}, "ball_center"_a = std::vector<double>{});
 }
 
 }  // namespace

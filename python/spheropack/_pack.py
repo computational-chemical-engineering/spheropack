@@ -136,9 +136,13 @@ def pack(
             raise ValueError("density must lie between 0 and 1")
         unit = _ball_volume(radii, dim).sum()
         target_scale = (density * container.volume / unit) ** (1.0 / dim)
-    periodic_lengths = [L for L, p in zip(container.lengths, container.periodic) if p]
-    if periodic_lengths and target_scale != _INF and 2.0 * radii.max() * target_scale >= min(periodic_lengths):
-        raise ValueError("the largest sphere would not fit in the periodic box (diameter >= edge length)")
+    if target_scale != _INF:
+        ball_axes = container.ball.axes if container.ball is not None else (False,) * dim
+        limits = [L for L, on in zip(container.lengths, ball_axes) if not on]  # periodic or flat walls
+        if container.ball is not None:
+            limits.append(2.0 * container.ball.radius)
+        if limits and 2.0 * radii.max() * target_scale >= min(limits):
+            raise ValueError("the largest sphere would not fit in the container")
 
     criteria = _stop._normalise(stop, maximum=density == "max")
     if not criteria:
@@ -175,6 +179,8 @@ def pack(
         jam_start_pressure=opts["jam_start_pressure"],
         jam_relax_windows=opts["jam_relax_windows"],
         jam_step=opts["jam_step"],
+        **({} if container.ball is None else dict(
+            ball_radius=container.ball.radius, ball_axes=list(container.ball.axes), ball_center=list(container.ball.center))),
     )
     if out["status"] == "interrupted":
         raise KeyboardInterrupt

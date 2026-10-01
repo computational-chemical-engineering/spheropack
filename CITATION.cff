@@ -1,0 +1,38 @@
+cff-version: 1.2.0
+title: "spheropack: random sphere packings with the event-driven Lubachevsky-Stillinger algorithm"
+version: "0.0.1"
+message: "If you use spheropack in your work, please cite the version you used."
+authors:
+  - family-names: Peters
+    given-names: E.A.J.F.
+    orcid: "https://orcid.org/0000-0001-6099-3583"
+abstract: >-
+  spheropack generates random sphere packings in periodic boxes, slabs, cylinders and
+  spherical containers with an exact event-driven Lubachevsky-Stillinger algorithm
+  (header-only C++20 core, Python interface), including a quasi-static jamming protocol
+  and structure analysis. It also provides the rejection-free event-driven Monte Carlo
+  method of Peters and de With (2012).
+keywords:
+  - sphere packing
+  - random close packing
+  - jamming
+  - event-driven molecular dynamics
+  - Lubachevsky-Stillinger
+  - packed beds
+  - chemical engineering
+license: "MIT"
+repository-code: "https://github.com/computational-chemical-engineering/spheropack"
+url: "https://computational-chemical-engineering.github.io/spheropack"
+references:
+  - type: article
+    authors:
+      - family-names: Peters
+        given-names: E.A.J.F.
+      - family-names: de With
+        given-names: G.
+    title: "Rejection-free Monte Carlo sampling for general potentials"
+    journal: "Physical Review E"
+    volume: 85
+    start: "026703"
+    year: 2012
+    doi: 10.1103/PhysRevE.85.026703

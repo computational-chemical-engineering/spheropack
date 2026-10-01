@@ -40,13 +40,18 @@ Building from source needs a C++20 compiler and CMake 3.18 or newer: `pip instal
 
 ## Documentation
 
-The documentation (user guide, example notebooks, Python and C++ reference) is built
-with Sphinx from `docs/`:
+https://computational-chemical-engineering.github.io/spheropack: user guide, example
+notebooks, Python and C++ reference. To build it locally from `docs/`:
 
 ```bash
 pip install sphinx pydata-sphinx-theme myst-nb breathe sphinx-copybutton sphinxcontrib-bibtex matplotlib
 cd docs && sphinx-build -b html . _build/html
 ```
+
+## Citing
+
+If you use spheropack, please cite it (see `CITATION.cff`); for the rejection-free
+Monte Carlo method, cite Peters and de With (2012).
 
 ## License
 

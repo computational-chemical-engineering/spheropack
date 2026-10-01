@@ -23,36 +23,61 @@ points, the initial configuration never overlaps.
 Two spheres touch when their distance equals the contact distance
 $\sigma_{ij}(t) = (a_i + a_j)\,s(t)$, which grows at speed
 $\dot\sigma_{ij} = (a_i + a_j)\,\dot s$. Let $u_n$ be the normal component of the
-relative velocity (positive when the spheres separate). At contact $u_n < \dot\sigma_{ij}$,
-otherwise the spheres would not have met. The collision rule sets
+relative velocity (positive when the spheres separate). At contact
+$u_n < \dot\sigma_{ij}$, otherwise the spheres would not have met. A collision changes
+both velocities by equal and opposite amounts along the line of centres, so momentum is
+conserved. Two collision rules are available.
+
+**Elastic in the growing frame** (`collision_rule="elastic_growing"`, the default), the
+rule of Donev, Torquato and Stillinger {cite:p}`donev2005a`:
 
 $$
-u_n' = \max\left(-u_n,\; \dot\sigma_{ij} + \delta\right),
+u_n' = 2\dot\sigma_{ij} - u_n .
 $$
 
-and changes both velocities by equal and opposite amounts along the line of centres,
-so momentum is conserved. The first argument is the elastic rule. The second ensures
-that the spheres separate faster than their contact distance grows, so they do not
-overlap immediately afterwards; $\delta = 10^{-9}\,v_\mathrm{th}$ is a margin that
-keeps the gap opening in floating point arithmetic. Collisions with flat walls follow
-the same rule with $\dot\sigma$ replaced by the growth speed of the radius.
+Seen from the growing surfaces, which approach each other at $\dot\sigma_{ij} - u_n$,
+the collision is elastic: they separate at the same speed. Each collision adds kinetic
+energy, which the thermostat removes (see below).
 
-This rule is inherited from the legacy code and differs from the rule of Donev,
-Torquato and Stillinger {cite:p}`donev2005a`, which is elastic in the frame of the
-growing surfaces. Their rule feeds energy into the system at every collision; this
-one keeps the kinetic energy bounded. Final densities reported in the literature for a
-given growth rate therefore need not carry over to spheropack.
+**Legacy** (`collision_rule="legacy"`), the rule of the original code:
 
-When the spheres stop growing ($\dot s = 0$) the rule is exactly elastic and the
-simulation is ordinary hard-sphere molecular dynamics, which conserves energy.
+$$
+u_n' = \max\left(-u_n,\; \dot\sigma_{ij} + \delta\right).
+$$
+
+It is elastic when the spheres approach faster than their contact distance grows, and
+otherwise lets them separate at the growth speed: perfectly inelastic in the growing
+frame. Near jamming this lets clusters of spheres lock in endless collisions, so the
+pressure spikes without a contact network having formed. Use it to reproduce results
+of the legacy code; the jamming protocol requires the default rule.
+
+In both rules $\delta = 10^{-9}\,v_\mathrm{th}$ is a minimal margin by which the
+separation speed exceeds the growth speed, which keeps the gap opening in floating
+point arithmetic. When the spheres stop growing ($\dot s = 0$) both rules are the
+elastic collision of hard spheres and the simulation is ordinary hard-sphere molecular
+dynamics, which conserves energy.
+
+### Walls
+
+Collisions with walls follow the same rules, with $\dot\sigma$ replaced by the growth
+speed $\dot\rho$ of the radius. Besides flat walls, a container can have a curved
+wall: a cylinder (packed tubes), a spherical container or a disk. Contact with the
+curved wall is again the first root of a quadratic, now of
+$f(\tau) = (R - \rho - \dot\rho\tau)^2 - |\mathbf q + \mathbf v\tau|^2$, with $R$
+the container radius and $\mathbf q$ the position relative to the axis or centre. On
+curved walls the legacy rule separates at $1.01\,\dot\rho$, as the legacy tube code
+did: at exactly $\dot\rho$, a sphere sliding along the concave wall would stay in
+contact with it and collide ever more often.
 
 ## Temperature
 
-Collisions with $-u_n < \dot\sigma_{ij}$ change the kinetic energy. While the spheres
-grow, all velocities are therefore rescaled to $k_BT = 1$ at regular intervals (every
-10 collisions per sphere by default). The rescaling does not change the collision
-sequence qualitatively; it keeps the growth rate meaningful relative to the thermal
-speed.
+While the spheres grow, collisions change the kinetic energy: the default rule adds
+energy at every collision, the legacy rule adds or removes it depending on the approach
+speed. All velocities are therefore rescaled to $k_BT = 1$ at regular intervals (every
+10 collisions per sphere by default), which keeps the growth rate meaningful relative
+to the thermal speed. Slow growth with this thermostat is quasi-static: the pressure
+then follows the equilibrium equation of state of hard spheres (tested against
+Carnahan-Starling within 5%).
 
 ## Event-driven simulation
 

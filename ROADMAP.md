@@ -66,23 +66,30 @@ rejection-free Monte Carlo method of Peters & de With, Phys. Rev. E 85, 026703
 | 5 | Rejection-free module, release 0.2.0 | two-particle chi-square p > 1e-3; U and g(r) match Metropolis (z < 4) for DPD and LJ |
 | 6 | Performance: profiling, cell-sorted storage, neighbour lists for polydisperse systems | at least 2x legacy collisions/s at N=1e4 near arrest, statistical suite unchanged |
 
-## Status (2026-10-01)
+## Status (2026-10-01, evening)
 
-- Done: phases 0 and 2; parts of 1 (CI written, not yet run) and 3 (CLI, analysis).
-- Collision rule `elastic_growing` is the default (approved); `legacy` kept for
-  reproducing the old code. `Jammed` protocol (approved) is the default stop for
-  `density="max"`: median pressure, relaxation at fixed radii, growth steps of
-  `step / Z` (step <= 0.5), stop when a fixed-radius window exceeds the target.
-- Tests: 97 fast, 3 slow (legacy statistics, slow-growth equation of state), 13 C++.
-  Code review by the think agent: all findings fixed (hangs at box size, overshooting
-  jamming steps, zero growth rate, predictor overlap case, rattler threshold, wall
-  virial, CSV precision, minor items).
-- Docs: Sphinx site with algorithm, growth rate (with sweep table), stopping criteria
-  and CLI pages; notebooks 01 quickstart, 02 compression and jamming, 03 structure
-  analysis; Doxygen for all headers except `ls_packing.hpp`.
-- Next: cylinder and sphere containers (packed tubes, radial porosity profile against
-  the legacy tube baseline), tube notebook, Doxygen for the engine, CI on GitHub,
-  growth-rate sweep at larger N, then release 0.1.0 after approval.
+- Phases 0, 2 and 3 done; phase 1 done except a TestPyPI upload. First commit pushed
+  to the private GitHub repository; CI green on Linux, macOS and Windows.
+- Collision rule `elastic_growing` is the default (approved); `legacy` reproduces the
+  old code (on curved walls it separates at 1.01 times the growth speed, as the legacy
+  tube code did). `Jammed` protocol (approved) is the default stop for
+  `density="max"`.
+- Containers: periodic and walled boxes, `Cylinder` (periodic or capped), `SphereContainer`,
+  `Disk`; 2D and 3D; polydisperse radii.
+- Tests: 120 fast, 4 slow (legacy periodic statistics, legacy tube radial profile,
+  slow-growth equation of state), 13 C++. Code review by the think agent; all findings
+  fixed.
+- Docs: Sphinx site (algorithm, growth rate with sweep table, stopping criteria, CLI,
+  Python and C++ API), notebooks 01 quickstart, 02 compression and jamming, 03
+  structure analysis, 04 packed tubes. Doxygen for all headers, no warnings.
+- CLI: `spheropack pack` and the legacy drop-ins `legacy-periodic`, `legacy-tube`.
+- Speed (N = 1e4 to phi 0.55 and 0.58, one core, idle machine): legacy 2.6e5
+  collisions/s, new 2.65e5 to 3.1e5 (on par to +20%). With the default rule fewer
+  collisions are needed (0.58: 4.3e5 against 5.6e5), so 1.6 s against 2.2 s. The
+  phase 6 target (2x) is still open.
+- Next: user review of a first complete version; then phase 4 (wheels, TestPyPI,
+  PyPI 0.1.0, public repository, hosted documentation), phase 5 (rejection-free
+  module), phase 6 (performance).
 
 ## Robustness rules for event prediction
 

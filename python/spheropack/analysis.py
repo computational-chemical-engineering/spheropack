@@ -26,6 +26,7 @@ __all__ = [
     "isostaticity",
     "neighbor_pairs",
     "radial_distribution",
+    "radial_profile",
     "rattlers",
 ]
 
@@ -315,6 +316,8 @@ def density_profile(packing: Packing, axis: int = -1, bins: int = 200) -> tuple[
     """
     c = packing.container
     axis = axis % packing.dim
+    if c.ball is not None and c.ball.axes[axis]:
+        raise ValueError("the cross-section varies along a curved-wall axis; use radial_profile")
     length = c.lengths[axis]
     edges = np.linspace(0.0, length, bins + 1)
     x = packing.positions[:, axis]
@@ -376,3 +379,61 @@ def crystalline(
     connected = s > threshold
     count = np.bincount(i[connected], minlength=n) + np.bincount(j[connected], minlength=n)
     return count >= min_connections
+
+
+def radial_profile(packing: Packing, bins: int = 200, n_theta: int = 32) -> tuple[np.ndarray, np.ndarray]:
+    """Local solid fraction as a function of the distance from the axis of a cylinder,
+    or from the centre of a spherical container or disk.
+
+    The value at radius ``r`` is the fraction of the surface at distance ``r`` (a
+    cylinder mantle, a spherical shell or a circle) that lies inside spheres: the
+    point-wise radial porosity profile is ``1 - phi``. Spheres are intersected
+    exactly with spherical shells and circles; for cylinders the intersection is
+    integrated over the angular extent of every sphere with ``n_theta`` points
+    (relative error below 1e-3 for the default 32).
+
+    Returns
+    -------
+    r:
+        Radii from 0 to the container radius (bin centres).
+    phi:
+        Solid fraction at each radius.
+    """
+    ball = packing.container.ball
+    if ball is None:
+        raise ValueError("radial_profile needs a Cylinder, SphereContainer or Disk")
+    axes = np.flatnonzero(ball.axes)
+    q = packing.positions[:, axes] - np.asarray(ball.center)[axes]
+    c = np.sqrt((q**2).sum(axis=1))  # distance of the sphere centres from the axis/centre
+    a = packing.radii
+    R = ball.radius
+    r = (np.arange(bins) + 0.5) * R / bins
+    phi = np.zeros(bins)
+    m, dim = len(axes), packing.dim
+    for b, rb in enumerate(r):
+        near = np.abs(c - rb) < a
+        cn, an = c[near], a[near]
+        if m == dim:  # sphere in 3D or disk in 2D: exact
+            with np.errstate(invalid="ignore", divide="ignore"):
+                cos0 = np.clip((rb * rb + cn * cn - an * an) / (2.0 * rb * cn), -1.0, 1.0)
+            cos0 = np.where(cn == 0.0, -1.0, cos0)  # concentric: the whole surface is inside
+            if dim == 3:
+                phi[b] = (2.0 * math.pi * rb * rb * (1.0 - cos0)).sum() / (4.0 * math.pi * rb * rb)
+            else:
+                phi[b] = (2.0 * rb * np.arccos(cos0)).sum() / (2.0 * math.pi * rb)
+        elif m == 2 and dim == 3:  # cylinder: chord length along the axis, integrated over the angle
+            # Integrate every sphere over its own angular support |theta| <= theta0 with the
+            # substitution theta = theta0 sin(psi), which also resolves the square-root edges.
+            with np.errstate(invalid="ignore", divide="ignore"):
+                cos0 = np.clip((rb * rb + cn * cn - an * an) / (2.0 * rb * cn), -1.0, 1.0)
+            theta0 = np.where(cn == 0.0, math.pi, np.arccos(cos0))
+            psi = (np.arange(n_theta) + 0.5) * math.pi / n_theta - 0.5 * math.pi
+            theta = theta0[:, None] * np.sin(psi)[None, :]
+            d2 = rb * rb + cn[:, None] ** 2 - 2.0 * rb * cn[:, None] * np.cos(theta)
+            chord = 2.0 * np.sqrt(np.maximum(an[:, None] ** 2 - d2, 0.0))
+            integral = (chord * (theta0[:, None] * np.cos(psi)[None, :] * math.pi / n_theta)).sum()
+            length = packing.container.volume / (math.pi * R * R)
+            phi[b] = integral / (2.0 * math.pi * length)
+        else:
+            raise ValueError("radial_profile supports cylinders (3D), spheres and disks")
+    return r, phi

@@ -26,7 +26,8 @@ class Packing:
         Why the run stopped: ``"target"`` (density or radii reached), or the name of
         the stopping criterion that fired: ``"pressure"``, ``"stall"``,
         ``"collisions"``, ``"timeout"``; ``"box_limit"`` when the largest sphere grew
-        as large as a periodic edge of the box (it would touch its own image);
+        as large as the container allows (a periodic edge, the distance between two
+        flat walls, or the diameter of a curved wall);
         ``"no_events"`` if nothing moves.
     success:
         True if the target was reached, or with ``density="max"`` if an arrest
