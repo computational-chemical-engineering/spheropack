@@ -13,22 +13,24 @@ q.positions, q.radii, q.density, q.status
 q.to_csv("packing.csv")
 ```
 
-- Periodic boxes, flat walls (slabs, closed boxes), 2D and 3D, mono- and polydisperse.
+- Periodic boxes, flat walls (slabs, closed boxes), cylinders (packed tubes), spherical
+  containers and disks; 2D and 3D; mono- and polydisperse.
 - A fast, exact C++20 event-driven core (header-only, no dependencies) with a
   nanobind Python interface. The GIL is released and Ctrl-C works.
 - A well-defined, dimensionless growth rate and composable stopping criteria,
   including a quasi-static jamming protocol.
 - Structure analysis: pair distribution function, contact numbers, rattlers (from the
   collision forces), isostaticity, Steinhardt bond order, crystallinity, density
-  profiles next to walls.
-- A command-line tool, including a drop-in replacement of the legacy
-  `generate_periodic_packing`.
+  profiles next to walls, radial porosity profiles in tubes.
+- A command-line tool, including drop-in replacements of the legacy
+  `generate_periodic_packing` and `generate_packed_tube`.
 
-The package will also make available the rejection-free, event-driven Monte Carlo
+The next version will also make available the rejection-free, event-driven Monte Carlo
 method of E.A.J.F. Peters and G. de With, *Rejection-free Monte Carlo sampling for
 general potentials*, Phys. Rev. E **85**, 026703 (2012).
 
-> **Status:** alpha, under construction. See [ROADMAP.md](ROADMAP.md).
+> **Status:** first release (0.1). The rejection-free Monte Carlo module follows in
+> 0.2; see the [roadmap](https://github.com/computational-chemical-engineering/spheropack/blob/main/ROADMAP.md).
 
 ## Installation
 
@@ -50,7 +52,8 @@ cd docs && sphinx-build -b html . _build/html
 
 ## Citing
 
-If you use spheropack, please cite it (see `CITATION.cff`); for the rejection-free
+If you use spheropack, please cite it (see
+[CITATION.cff](https://github.com/computational-chemical-engineering/spheropack/blob/main/CITATION.cff)); for the rejection-free
 Monte Carlo method, cite Peters and de With (2012).
 
 ## License
