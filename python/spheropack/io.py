@@ -25,6 +25,7 @@ import json
 import math
 import struct
 from pathlib import Path
+from typing import Any, cast
 
 import numpy as np
 
@@ -445,7 +446,8 @@ def save(packing: Packing, path: str | Path) -> None:
         arrays["sphere_pressure"] = packing.sphere_pressure
     for k, v in (packing.history or {}).items():
         arrays[f"history_{k}"] = np.asarray(v)
-    np.savez_compressed(path, meta=json.dumps({"format": "spheropack-1", "container": container, **meta}), **arrays)
+    arrays["meta"] = np.array(json.dumps({"format": "spheropack-1", "container": container, **meta}))
+    np.savez_compressed(path, **cast(dict[str, Any], arrays))
 
 
 def load(path: str | Path) -> Packing:
