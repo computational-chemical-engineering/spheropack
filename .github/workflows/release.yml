@@ -24,9 +24,9 @@ jobs:
       matrix:
         os: [ubuntu-latest, ubuntu-24.04-arm, macos-15-intel, macos-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v4
-      - uses: pypa/cibuildwheel@v2.23
-      - uses: actions/upload-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: pypa/cibuildwheel@v4.2
+      - uses: actions/upload-artifact@v7
         with:
           name: wheels-${{ matrix.os }}
           path: wheelhouse/*.whl
@@ -34,10 +34,10 @@ jobs:
   sdist:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: pipx run build --sdist
       - run: pipx run twine check --strict dist/*
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sdist
           path: dist/*.tar.gz
@@ -52,7 +52,7 @@ jobs:
     permissions:
       id-token: write  # trusted publishing
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
@@ -70,7 +70,7 @@ jobs:
     permissions:
       id-token: write  # trusted publishing
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
