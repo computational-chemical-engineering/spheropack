@@ -1,5 +1,6 @@
 """Sphinx configuration for spheropack."""
 
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -45,7 +46,12 @@ _here = Path(__file__).parent
 subprocess.run(["doxygen", "Doxyfile"], cwd=_here, check=True)
 breathe_projects = {"spheropack": str(_here / "_build" / "doxygen" / "xml")}
 breathe_default_project = "spheropack"
-html_extra_path = []
+# Copies of the notebooks next to their pages, for the "Download notebook" badges.
+_extra = _here / "_build" / "extra"
+(_extra / "notebooks").mkdir(parents=True, exist_ok=True)
+for _nb in (_here / "notebooks").glob("*.ipynb"):
+    shutil.copy2(_nb, _extra / "notebooks" / _nb.name)
+html_extra_path = [str(_extra)]
 
 html_theme = "pydata_sphinx_theme"
 html_title = "spheropack"

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Rejection-free Monte Carlo (`spheropack.rejection_free`), the method of Peters and
+  de With, Phys. Rev. E 85, 026703 (2012): `System`, potentials `LennardJones`, `WCA`,
+  `DPD`, `SoftSpheres`, `HardSpheres`, `radial_distribution`. Validated against exact
+  two-particle distributions and the data of the paper; notebook reproducing its
+  Lennard-Jones case.
+- Performance: packing about 1.5 times faster than 0.1.0 (extension no longer
+  optimised for size, cell-sorted particle storage, cheaper re-prediction after cell
+  crossings).
+- Notebooks have "Open in Colab" and "Download notebook" badges.
 - Output formats (`spheropack.io`, methods on `Packing`, CLI `--format`): extended XYZ
   (OVITO, ASE), LAMMPS dump and data file (atom_style sphere), VTK PolyData and
   container outlines (ParaView), binary STL meshes, POV-Ray scenes, and `.npz` save

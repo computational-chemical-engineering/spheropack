@@ -12,6 +12,7 @@
 
 #include "spheropack/ls_packing.hpp"
 #include "spheropack/neighbors.hpp"
+#include "spheropack/rejection_free.hpp"
 #include "spheropack/rng.hpp"
 
 namespace nb = nanobind;
@@ -124,7 +125,11 @@ nb::dict ls_pack(InArray1 radii, std::vector<double> lengths, std::vector<bool> 
   out["density"] = s.density;
   out["reduced_pressure"] = s.reduced_pressure;
   out["median_pressure"] = s.median_pressure;
-  out["sphere_pressure"] = to_numpy(std::vector<double>(sim.sphere_pressure()), {sim.sphere_pressure().size()});
+  {
+    auto pressure = sim.sphere_pressure();
+    const std::size_t m = pressure.size();
+    out["sphere_pressure"] = to_numpy(std::move(pressure), {m});
+  }
   {
     const auto& h = sim.history();
     const std::size_t m = h.size();
@@ -186,6 +191,73 @@ nb::tuple neighbor_pairs(InArray2 positions, std::vector<double> lengths, std::v
                         to_numpy(std::move(r_out), {m, static_cast<std::size_t>(D)}));
 }
 
+spheropack::PairPotential make_potential(const std::string& kind, double epsilon, double sigma, double cutoff,
+                                         double alpha) {
+  spheropack::PairPotential p;
+  if (kind == "soft") p.kind = spheropack::PairPotential::Kind::soft;
+  else if (kind == "lennard_jones") p.kind = spheropack::PairPotential::Kind::lennard_jones;
+  else if (kind == "hard") p.kind = spheropack::PairPotential::Kind::hard;
+  else throw nb::value_error("potential kind must be 'soft', 'lennard_jones' or 'hard'");
+  p.epsilon = epsilon;
+  p.sigma = sigma;
+  p.cutoff = cutoff;
+  p.alpha = alpha;
+  p.prepare();
+  return p;
+}
+
+OutArray potential_values(const std::string& kind, double epsilon, double sigma, double cutoff, double alpha,
+                          InArray1 r) {
+  const auto p = make_potential(kind, epsilon, sigma, cutoff, alpha);
+  std::vector<double> u(r.shape(0));
+  for (std::size_t i = 0; i < u.size(); ++i) u[i] = p.value(r.data()[i]);
+  return to_numpy(std::move(u), {u.size()});
+}
+
+template <int D>
+void def_rejection_free(nb::module_& m, const char* name) {
+  using Sim = spheropack::RejectionFreeMC<D>;
+  nb::class_<Sim>(m, name)
+      .def("__init__",
+           [](Sim* self, InArray2 positions, std::vector<double> lengths, const std::string& kind, double epsilon,
+              double sigma, double cutoff, double alpha, double kT, std::uint64_t seed) {
+             if (lengths.size() != D) throw nb::value_error("box lengths need one entry per dimension");
+             spheropack::Box<D> box;
+             for (int k = 0; k < D; ++k) {
+               box.L[k] = lengths[k];
+               box.periodic[k] = true;
+             }
+             new (self) Sim(box, numpy_to_points<D>(positions, positions.shape(0), "positions"),
+                            make_potential(kind, epsilon, sigma, cutoff, alpha), kT, seed);
+           },
+           "positions"_a, "lengths"_a, "kind"_a, "epsilon"_a, "sigma"_a, "cutoff"_a, "alpha"_a, "kT"_a, "seed"_a)
+      .def("run",
+           [](Sim& self, double duration) {
+             nb::gil_scoped_release release;
+             self.run(duration, [] {
+               nb::gil_scoped_acquire acquire;
+               if (PyErr_CheckSignals() != 0) {
+                 PyErr_Clear();
+                 return true;
+               }
+               return false;
+             });
+             return self.stats().interrupted;
+           },
+           "duration"_a)
+      .def("positions", [](Sim& self) { return points_to_numpy<D>(self.positions()); })
+      .def("velocities", [](const Sim& self) { return points_to_numpy<D>(self.velocities()); })
+      .def("set_velocities",
+           [](Sim& self, InArray2 v) { self.set_velocities(numpy_to_points<D>(v, self.size(), "velocities")); },
+           "velocities"_a)
+      .def("redraw_velocities", &Sim::redraw_velocities)
+      .def("potential_energy", &Sim::potential_energy)
+      .def_prop_ro("time", &Sim::time)
+      .def_prop_ro("n_reflections", [](const Sim& s) { return s.stats().n_reflections; })
+      .def_prop_ro("n_events", [](const Sim& s) { return s.stats().n_events; })
+      .def_prop_ro("wall_time", [](const Sim& s) { return s.stats().wall_time; });
+}
+
 // Draws `n` variates of the given kind from a fresh generator; used to test the
 // generator from Python and to check reproducibility across platforms.
 OutArray rng_sample(std::uint64_t seed, std::size_t n, const std::string& kind) {
@@ -224,6 +296,9 @@ NB_MODULE(_core, m) {
   def_ls_pack<3>(m, "_ls_pack3");
   m.def("_neighbor_pairs2", &neighbor_pairs<2>, "positions"_a, "lengths"_a, "periodic"_a, "cutoff"_a);
   m.def("_neighbor_pairs3", &neighbor_pairs<3>, "positions"_a, "lengths"_a, "periodic"_a, "cutoff"_a);
+  def_rejection_free<2>(m, "_RejectionFree2");
+  def_rejection_free<3>(m, "_RejectionFree3");
+  m.def("_potential_values", &potential_values, "kind"_a, "epsilon"_a, "sigma"_a, "cutoff"_a, "alpha"_a, "r"_a);
   m.def("_rng_sample", &rng_sample, "seed"_a, "n"_a, "kind"_a);
   m.def("_rng_raw", &rng_raw, "seed"_a, "skip"_a = 0);
 }

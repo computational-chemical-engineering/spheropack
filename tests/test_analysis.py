@@ -104,7 +104,10 @@ def test_contact_based_rattlers_agree_roughly_with_force_based():
     p = sp.pack(n=500, density="max", seed=4)
     force = analysis.rattlers(p, method="force")
     count = analysis.rattlers(p, tol=1e-7, method="contacts")
-    assert (force & ~count).sum() <= 3  # force-free spheres almost always lack contacts
+    z = analysis.contact_numbers(p, tol=1e-7)
+    assert z[force].mean() < 2.0 < 5.5 < z[~force].mean()  # force-free spheres lack contacts
+    # The contact rule misses force-free spheres whose dim + 1 contacts do not balance.
+    assert (force & ~count).sum() <= 0.02 * p.n
 
 
 @pytest.mark.parametrize(

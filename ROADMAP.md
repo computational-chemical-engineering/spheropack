@@ -66,17 +66,21 @@ rejection-free Monte Carlo method of Peters & de With, Phys. Rev. E 85, 026703
 | 5 | Rejection-free module, release 0.2.0 | two-particle chi-square p > 1e-3; U and g(r) match Metropolis (z < 4) for DPD and LJ |
 | 6 | Performance: profiling, cell-sorted storage, neighbour lists for polydisperse systems | at least 2x legacy collisions/s at N=1e4 near arrest, statistical suite unchanged |
 
-## Status (2026-10-01, release preparation)
+## Status (2026-10-02)
 
-- Repository transferred to github.com/computational-chemical-engineering/spheropack
-  (private until the user approves the release).
-- Version 0.1.0 prepared: changelog, citation file, wheels for Linux (x86_64, aarch64),
-  macOS (arm64, x86_64) and Windows for Python 3.10, 3.11 and 3.12+ (stable ABI),
-  sdist checked with twine and installed and tested in a clean environment.
-- Remaining for the release: register the PyPI and TestPyPI trusted publishers
-  (user), TestPyPI dry run, user approval, then: make public, enable Pages, publish
-  release v0.1.0.
-- After 0.1.0: phase 5 (rejection-free module, 0.2.0), phase 6 (performance, 2x).
+- 0.1.0 released on PyPI (2026-10-01); repository public in the organisation.
+- Since 0.1.0 (unreleased): output formats (`spheropack.io`: XYZ, LAMMPS dump and data,
+  VTP, STL, POV-Ray, npz), the rejection-free Monte Carlo module (phase 5, validated
+  against exact two-particle distributions and the paper's DPD and LJ data, notebook
+  05), performance work (phase 6), Colab and download badges on the notebooks.
+- Speed (one core): packing N = 1e4 at 4.25e5 collisions/s (0.1.0: 2.65e5, legacy
+  2.6e5), N = 1e5 at 2.6e5 from Python; rejection-free LJ 5.7e4 and DPD 1.4e5
+  reflections/s (first version: 2.0e4 and 5.4e4). Gains: no size optimisation of the
+  extension (nanobind NOMINSIZE), cell-sorted storage, crossing re-prediction over the
+  new cell layer only, geometric pre-checks in the rejection-free prediction.
+- Next: release 0.2.0 (after user approval); event-chain variant of the
+  rejection-free method; further performance (neighbour lists for the rejection-free
+  engine, which scans 27 cells of the cutoff size).
 
 ## Robustness rules for event prediction
 

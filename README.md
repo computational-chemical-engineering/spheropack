@@ -32,12 +32,12 @@ q.to_csv("packing.csv")
 - A command-line tool, including drop-in replacements of the legacy
   `generate_periodic_packing` and `generate_packed_tube`.
 
-The next version will also make available the rejection-free, event-driven Monte Carlo
-method of E.A.J.F. Peters and G. de With, *Rejection-free Monte Carlo sampling for
-general potentials*, Phys. Rev. E **85**, 026703 (2012).
+`spheropack.rejection_free` provides the rejection-free, event-driven Monte Carlo method
+of E.A.J.F. Peters and G. de With, *Rejection-free Monte Carlo sampling for general
+potentials*, Phys. Rev. E **85**, 026703 (2012), for Lennard-Jones, WCA, DPD, soft and
+hard spheres.
 
-> **Status:** first release (0.1). The rejection-free Monte Carlo module follows in
-> 0.2; see the [roadmap](https://github.com/computational-chemical-engineering/spheropack/blob/main/ROADMAP.md).
+> **Status:** alpha. See the [roadmap](https://github.com/computational-chemical-engineering/spheropack/blob/main/ROADMAP.md).
 
 ## Installation
 

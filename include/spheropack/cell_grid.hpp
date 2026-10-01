@@ -148,6 +148,49 @@ class CellGrid {
     insert(i, cell);
   }
 
+  /// @brief Like for_each_neighbor(), but only the layer of the stencil at offset `dir`
+  /// (+1 or -1) along `axis`: the cells that become adjacent when a particle moves into
+  /// `cell` across that face. Requires at least three cells along `axis`.
+  /// @param cell centre cell of the stencil
+  /// @param axis axis of the move
+  /// @param dir direction of the move along `axis` (+1 or -1)
+  /// @param f callable `f(std::uint32_t j, const std::array<int, D>& shift)`
+  template <class F>
+  void for_each_neighbor_layer(std::int32_t cell, int axis, int dir, F&& f) const {
+    const Index c = coords(cell);
+    std::array<int, D> o;
+    o.fill(-1);
+    o[axis] = dir;
+    for (;;) {
+      Index nc;
+      std::array<int, D> shift{};
+      bool valid = true;
+      for (int k = 0; k < D && valid; ++k) {
+        int ck = c[k] + o[k];
+        if (ck < 0) {
+          if (box_.periodic[k]) {
+            ck += n_[k];
+            shift[k] = -1;
+          } else valid = false;
+        } else if (ck >= n_[k]) {
+          if (box_.periodic[k]) {
+            ck -= n_[k];
+            shift[k] = 1;
+          } else valid = false;
+        }
+        nc[k] = ck;
+      }
+      if (valid)
+        for (std::int32_t j = head_[flat(nc)]; j != none; j = next_[j]) f(static_cast<std::uint32_t>(j), shift);
+      int k = 0;
+      while (k < D && (k == axis || ++o[k] > 1)) {
+        if (k != axis) o[k] = -1;
+        ++k;
+      }
+      if (k == D) break;
+    }
+  }
+
   /// @brief Visit every particle in the \f$3^D\f$ stencil of cells around `cell`.
   ///
   /// Calls `f(j, shift)` for each particle `j` found, where the image of `j` to use is

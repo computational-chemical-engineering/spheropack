@@ -1,6 +1,6 @@
 """Random sphere packings with the event-driven Lubachevsky-Stillinger algorithm."""
 
-from . import io, stop
+from . import io, rejection_free, stop
 from ._pack import PackingError, PackingWarning, pack
 from ._version import __version__
 from .containers import Ball, Box, Cylinder, Disk, PeriodicBox, SphereContainer
@@ -21,5 +21,6 @@ __all__ = [
     "io",
     "load",
     "pack",
+    "rejection_free",
     "stop",
 ]

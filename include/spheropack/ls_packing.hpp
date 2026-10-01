@@ -20,6 +20,7 @@
 #include <functional>
 #include <limits>
 #include <stdexcept>
+#include <type_traits>
 #include <vector>
 
 #include "box.hpp"
@@ -187,6 +188,10 @@ class LSPacking {
     ds_user_ = ds_ = opt_.growth_rate / (2.0 * sum_a / static_cast<double>(n));
     w_.assign(n, 0.0);
     ev_.resize(n);
+    orig_.resize(n);
+    for (std::size_t i = 0; i < n; ++i) orig_[i] = static_cast<std::uint32_t>(i);
+    contact_ev_.resize(n);
+    contact_t_.assign(n, never);
     randomize_positions();
     randomize_velocities();
   }
@@ -228,7 +233,7 @@ class LSPacking {
     if (x.size() != p_.size()) throw std::invalid_argument("positions: wrong number of particles");
     if (!(scale >= 0.0)) throw std::invalid_argument("initial scale must be >= 0");
     for (std::size_t i = 0; i < p_.size(); ++i) {
-      p_[i].x = x[i];
+      p_[i].x = x[orig_[i]];
       p_[i].img.fill(0);
     }
     s0_ = scale;
@@ -242,7 +247,7 @@ class LSPacking {
   /// @throws std::invalid_argument if the number of velocities differs from the number of particles
   void set_velocities(const std::vector<Vec<D>>& v) {
     if (v.size() != p_.size()) throw std::invalid_argument("velocities: wrong number of particles");
-    for (std::size_t i = 0; i < p_.size(); ++i) p_[i].v = v[i];
+    for (std::size_t i = 0; i < p_.size(); ++i) p_[i].v = v[orig_[i]];
   }
 
   /// @brief Runs until a stopping criterion is met.
@@ -396,7 +401,11 @@ class LSPacking {
   /// Without walls its mean over spheres is the reduced pressure; wall contacts add to
   /// the spheres that touch a wall. Close to 1 for rattlers.
   /// @return one value per sphere; empty before the first window has closed
-  const std::vector<double>& sphere_pressure() const noexcept { return sphere_pressure_; }
+  std::vector<double> sphere_pressure() const {
+    std::vector<double> out(sphere_pressure_.size());
+    for (std::size_t i = 0; i < out.size(); ++i) out[orig_[i]] = sphere_pressure_[i];
+    return out;
+  }
   /// @return the statistics of the last run (status Status::running before the first run)
   const PackingStats& stats() const noexcept { return stats_; }
   /// @return the container
@@ -406,20 +415,20 @@ class LSPacking {
   /// @return one position per particle
   std::vector<Vec<D>> positions() const {
     std::vector<Vec<D>> x(p_.size());
-    for (std::size_t i = 0; i < p_.size(); ++i) x[i] = p_[i].x;
+    for (std::size_t i = 0; i < p_.size(); ++i) x[orig_[i]] = p_[i].x;
     return x;
   }
   /// @return one velocity per particle
   std::vector<Vec<D>> velocities() const {
     std::vector<Vec<D>> v(p_.size());
-    for (std::size_t i = 0; i < p_.size(); ++i) v[i] = p_[i].v;
+    for (std::size_t i = 0; i < p_.size(); ++i) v[orig_[i]] = p_[i].v;
     return v;
   }
   /// @brief Final radii a_i * stats().scale; valid after run().
   /// @return one radius per particle
   std::vector<double> radii() const {
     std::vector<double> r(p_.size());
-    for (std::size_t i = 0; i < p_.size(); ++i) r[i] = p_[i].a * stats_.scale;
+    for (std::size_t i = 0; i < p_.size(); ++i) r[orig_[i]] = p_[i].a * stats_.scale;
     return r;
   }
 
@@ -543,8 +552,34 @@ class LSPacking {
     if (grid_.min_width() < sigma_max)
       throw std::runtime_error("the box is smaller than the largest particle diameter");
     s_grid_limit_ = grid_.min_width() / (2.0 * a_max_);
+    sort_by_cell();
     grid_.clear_particles(p_.size());
     for (std::uint32_t i = 0; i < p_.size(); ++i) grid_.insert(i, grid_.flat(grid_.coords_of(p_[i].x)));
+  }
+
+  /// Reorders the particles by cell (counting sort), so that neighbours are close in
+  /// memory. Valid only right after a synchronisation, when no event refers to particle
+  /// indices; orig_ maps internal to original indices for all input and output.
+  void sort_by_cell() {
+    const std::size_t n = p_.size();
+    std::vector<std::uint32_t> count(grid_.num_cells() + 1, 0);
+    std::vector<std::int32_t> cell(n);
+    for (std::size_t i = 0; i < n; ++i) {
+      cell[i] = grid_.flat(grid_.coords_of(p_[i].x));
+      ++count[cell[i] + 1];
+    }
+    for (std::size_t c = 1; c < count.size(); ++c) count[c] += count[c - 1];
+    std::vector<std::uint32_t> order(n);  // order[new] = old
+    for (std::size_t i = 0; i < n; ++i) order[count[cell[i]]++] = static_cast<std::uint32_t>(i);
+    auto permute = [&](auto& v) {
+      std::remove_reference_t<decltype(v)> tmp(v.size());
+      for (std::size_t k = 0; k < n; ++k) tmp[k] = v[order[k]];
+      v.swap(tmp);
+    };
+    permute(p_);
+    permute(w_);
+    permute(orig_);
+    if (sphere_pressure_.size() == n) permute(sphere_pressure_);
   }
 
   /// Predicts the next event of particle i (advanced to now) and stores it in ev_[i].
@@ -556,24 +591,8 @@ class LSPacking {
     double tau_best = never;
     const double s = scale_at(now_);
 
-    const auto c = grid_.coords(grid_.cell_of(i));
     for (int k = 0; k < D; ++k) {
       const double v = pi.v[k];
-      double tau = never;
-      std::int8_t dir = 0;
-      if (v > 0.0 && (box_.periodic[k] || c[k] < grid_.n(k) - 1)) {
-        tau = std::max(0.0, ((c[k] + 1) * grid_.width(k) - pi.x[k]) / v);
-        dir = 1;
-      } else if (v < 0.0 && (box_.periodic[k] || c[k] > 0)) {
-        tau = std::max(0.0, (c[k] * grid_.width(k) - pi.x[k]) / v);
-        dir = -1;
-      }
-      if (tau < tau_best) {
-        tau_best = tau;
-        best.type = EventType::cross;
-        best.axis = static_cast<std::int8_t>(k);
-        best.dir = dir;
-      }
       if (box_.flat_walls(k)) {
         const double rho = pi.a * s, drho = pi.a * ds_;
         const double t_lo = first_contact_linear(pi.x[k] - rho, v - drho);
@@ -613,28 +632,87 @@ class LSPacking {
     }
 
     grid_.for_each_neighbor(grid_.cell_of(i), [&](std::uint32_t j, const std::array<int, D>& shift) {
-      if (j == i) return;  // self images would need a box smaller than a diameter
-      const Particle& pj = p_[j];
-      const double dtj = now_ - pj.t;
-      Vec<D> r, u;
-      for (int k = 0; k < D; ++k) {
-        r[k] = pj.x[k] + pj.v[k] * dtj + shift[k] * box_.L[k] - pi.x[k];
-        u[k] = pj.v[k] - pi.v[k];
-      }
-      const double sig = (pi.a + pj.a) * s, dsig = (pi.a + pj.a) * ds_;
-      const double tau = first_contact(norm2<D>(u) - dsig * dsig, dot<D>(r, u) - sig * dsig,
-                                       norm2<D>(r) - sig * sig);
-      if (tau < tau_best) {
-        tau_best = tau;
-        best.type = EventType::pair;
-        best.partner = j;
-        best.partner_counter = pj.counter;
-        for (int k = 0; k < D; ++k) best.image[k] = shift[k] - pj.img[k] + pi.img[k];
-      }
+      consider_pair(i, j, shift, s, best, tau_best);
     });
+    contact_ev_[i] = best;
+    contact_t_[i] = now_ + tau_best;
+    return combine_with_crossing(i);
+  }
 
-    ev_[i] = best;
-    return now_ + tau_best;
+  /// Re-prediction after particle i crossed into a new cell along `axis` in direction
+  /// `dir`. Its trajectory is unchanged, so its best contact event from the last full
+  /// scan stays valid unless the partner changed course; only the newly adjacent cell
+  /// layer needs scanning.
+  double predict_after_crossing(std::uint32_t i, int axis, int dir) {
+    const Event& old = contact_ev_[i];
+    const bool stale = old.type == EventType::pair && p_[old.partner].counter != old.partner_counter;
+    if (stale || grid_.n(axis) < 3) return predict(i);
+    advance(p_[i]);
+    Event best = old;
+    double tau_best = contact_t_[i] == never ? never : std::max(0.0, contact_t_[i] - now_);
+    const double s = scale_at(now_);
+    grid_.for_each_neighbor_layer(grid_.cell_of(i), axis, dir, [&](std::uint32_t j, const std::array<int, D>& shift) {
+      consider_pair(i, j, shift, s, best, tau_best);
+    });
+    contact_ev_[i] = best;
+    contact_t_[i] = tau_best == never ? never : now_ + tau_best;
+    return combine_with_crossing(i);
+  }
+
+  /// Contact prediction of pair (i, j); updates `best` if earlier than `tau_best`.
+  void consider_pair(std::uint32_t i, std::uint32_t j, const std::array<int, D>& shift, double s, Event& best,
+                     double& tau_best) const noexcept {
+    if (j == i) return;  // self images would need a box smaller than a diameter
+    const Particle& pi = p_[i];
+    const Particle& pj = p_[j];
+    const double dtj = now_ - pj.t;
+    Vec<D> r, u;
+    for (int k = 0; k < D; ++k) {
+      r[k] = pj.x[k] + pj.v[k] * dtj + shift[k] * box_.L[k] - pi.x[k];
+      u[k] = pj.v[k] - pi.v[k];
+    }
+    const double sig = (pi.a + pj.a) * s, dsig = (pi.a + pj.a) * ds_;
+    const double tau = first_contact(norm2<D>(u) - dsig * dsig, dot<D>(r, u) - sig * dsig, norm2<D>(r) - sig * sig);
+    if (tau < tau_best) {
+      tau_best = tau;
+      best.type = EventType::pair;
+      best.partner = j;
+      best.partner_counter = pj.counter;
+      for (int k = 0; k < D; ++k) best.image[k] = shift[k] - pj.img[k] + pi.img[k];
+    }
+  }
+
+  /// Next cell crossing of particle i (advanced to now), combined with its stored best
+  /// contact event into ev_[i]; returns the absolute event time.
+  double combine_with_crossing(std::uint32_t i) {
+    const Particle& pi = p_[i];
+    const auto c = grid_.coords(grid_.cell_of(i));
+    Event cross;
+    double t_cross = never;
+    for (int k = 0; k < D; ++k) {
+      const double v = pi.v[k];
+      double tau = never;
+      std::int8_t dir = 0;
+      if (v > 0.0 && (box_.periodic[k] || c[k] < grid_.n(k) - 1)) {
+        tau = std::max(0.0, ((c[k] + 1) * grid_.width(k) - pi.x[k]) / v);
+        dir = 1;
+      } else if (v < 0.0 && (box_.periodic[k] || c[k] > 0)) {
+        tau = std::max(0.0, (c[k] * grid_.width(k) - pi.x[k]) / v);
+        dir = -1;
+      }
+      if (now_ + tau < t_cross) {
+        t_cross = now_ + tau;
+        cross.type = EventType::cross;
+        cross.axis = static_cast<std::int8_t>(k);
+        cross.dir = dir;
+      }
+    }
+    if (t_cross < contact_t_[i]) {
+      ev_[i] = cross;
+      return t_cross;
+    }
+    ev_[i] = contact_ev_[i];
+    return contact_t_[i];
   }
 
   /// Processes the predicted event of particle i at the current time: moves it across a
@@ -661,7 +739,7 @@ class LSPacking {
           ++pi.img[k];
         }
         grid_.move(i, grid_.flat(c));
-        heap_.update(i, predict(i));
+        heap_.update(i, predict_after_crossing(i, k, e.dir));
         return;
       }
       case EventType::wall: {
@@ -871,6 +949,9 @@ class LSPacking {
   Rng rng_;                   ///< random number generator
   std::vector<Particle> p_;   ///< particles
   std::vector<Event> ev_;     ///< predicted event of each particle
+  std::vector<std::uint32_t> orig_;  ///< original index of each (cell-sorted) particle
+  std::vector<Event> contact_ev_;  ///< best wall, ball or pair event from the last scan
+  std::vector<double> contact_t_;  ///< absolute time of contact_ev_
   EventHeap heap_;            ///< event times, one per particle
   CellGrid<D> grid_;          ///< cell grid for neighbour search
   PackingStats stats_;        ///< statistics of the run

@@ -20,6 +20,7 @@ guide/algorithm
 guide/growth_rate
 guide/stopping
 guide/output
+guide/rejection_free
 cli
 ```
 
@@ -31,6 +32,7 @@ notebooks/01_quickstart
 notebooks/02_compression_and_jamming
 notebooks/03_structure_analysis
 notebooks/04_packed_tubes
+notebooks/05_rejection_free_lennard_jones
 ```
 
 ```{toctree}

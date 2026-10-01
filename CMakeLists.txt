@@ -26,7 +26,7 @@ if(SKBUILD)
   find_package(Python 3.10 REQUIRED COMPONENTS Interpreter Development.Module
                OPTIONAL_COMPONENTS Development.SABIModule)
   find_package(nanobind CONFIG REQUIRED)
-  nanobind_add_module(_core STABLE_ABI NB_STATIC src/bindings.cpp)
+  nanobind_add_module(_core STABLE_ABI NB_STATIC NOMINSIZE src/bindings.cpp)
   target_link_libraries(_core PRIVATE spheropack_core)
   install(TARGETS _core LIBRARY DESTINATION spheropack)
   # Type stub for the extension (imports the built module at build time).
