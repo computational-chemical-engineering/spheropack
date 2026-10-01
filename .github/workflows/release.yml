@@ -1,4 +1,4 @@
-name: wheels
+name: Release
 
 # Builds wheels for Linux, macOS and Windows plus the sdist. A published GitHub release
 # uploads them to PyPI; a manual run can upload them to TestPyPI.

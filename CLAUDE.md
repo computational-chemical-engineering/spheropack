@@ -41,14 +41,14 @@ The editable install does not rebuild automatically; rerun the pip install line 
 ## Release process
 
 Repository: github.com/computational-chemical-engineering/spheropack. PyPI uploads use
-trusted publishing from `.github/workflows/wheels.yml` (environments `pypi` and
+trusted publishing from `.github/workflows/release.yml` (environments `pypi` and
 `testpypi`; the publisher must be registered on pypi.org / test.pypi.org for workflow
-`wheels.yml`). Docs deploy to GitHub Pages from `.github/workflows/docs.yml` on a
+`release.yml`). Docs deploy to GitHub Pages from `.github/workflows/docs.yml` on a
 release or a manual run (Pages source: GitHub Actions).
 
 1. Bump `python/spheropack/_version.py` and `CITATION.cff` (version, date-released);
    move the CHANGELOG entry out of "unreleased".
-2. Run the slow suite locally (`pytest -m slow`) and a manual `wheels.yml` run
+2. Run the slow suite locally (`pytest -m slow`) and a manual `release.yml` run
    (optionally with upload to TestPyPI, then `pip install -i https://test.pypi.org/simple/ spheropack`).
 3. Publish a GitHub release with tag `vX.Y.Z`: builds wheels and sdist, uploads to
    PyPI, deploys the docs. Never publish or make the repository public without the
