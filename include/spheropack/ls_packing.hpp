@@ -406,6 +406,9 @@ class LSPacking {
     for (std::size_t i = 0; i < out.size(); ++i) out[orig_[i]] = sphere_pressure_[i];
     return out;
   }
+  /// @brief Testing aid: re-predict with a full neighbour scan after every cell crossing
+  /// instead of scanning only the new cell layer. The trajectory must be the same.
+  void set_full_rescan(bool on) noexcept { full_rescan_ = on; }
   /// @return the statistics of the last run (status Status::running before the first run)
   const PackingStats& stats() const noexcept { return stats_; }
   /// @return the container
@@ -646,7 +649,7 @@ class LSPacking {
   double predict_after_crossing(std::uint32_t i, int axis, int dir) {
     const Event& old = contact_ev_[i];
     const bool stale = old.type == EventType::pair && p_[old.partner].counter != old.partner_counter;
-    if (stale || grid_.n(axis) < 3) return predict(i);
+    if (full_rescan_ || stale || grid_.n(axis) < 2 * grid_.stencil() + 1) return predict(i);
     advance(p_[i]);
     Event best = old;
     double tau_best = contact_t_[i] == never ? never : std::max(0.0, contact_t_[i] - now_);
@@ -950,6 +953,7 @@ class LSPacking {
   std::vector<Particle> p_;   ///< particles
   std::vector<Event> ev_;     ///< predicted event of each particle
   std::vector<std::uint32_t> orig_;  ///< original index of each (cell-sorted) particle
+  bool full_rescan_ = false;  ///< testing aid, see set_full_rescan()
   std::vector<Event> contact_ev_;  ///< best wall, ball or pair event from the last scan
   std::vector<double> contact_t_;  ///< absolute time of contact_ev_
   EventHeap heap_;            ///< event times, one per particle

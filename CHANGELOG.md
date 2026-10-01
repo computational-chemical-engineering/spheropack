@@ -9,7 +9,8 @@
   Lennard-Jones case.
 - Performance: packing about 1.5 times faster than 0.1.0 (extension no longer
   optimised for size, cell-sorted particle storage, cheaper re-prediction after cell
-  crossings).
+  crossings); the rejection-free engine uses cells of half the cutoff with a 5^D
+  stencil. The cell grid supports any stencil radius.
 - Notebooks have "Open in Colab" and "Download notebook" badges.
 - Output formats (`spheropack.io`, methods on `Packing`, CLI `--format`): extended XYZ
   (OVITO, ASE), LAMMPS dump and data file (atom_style sphere), VTK PolyData and

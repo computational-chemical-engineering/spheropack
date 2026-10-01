@@ -74,13 +74,15 @@ rejection-free Monte Carlo method of Peters & de With, Phys. Rev. E 85, 026703
   against exact two-particle distributions and the paper's DPD and LJ data, notebook
   05), performance work (phase 6), Colab and download badges on the notebooks.
 - Speed (one core): packing N = 1e4 at 4.25e5 collisions/s (0.1.0: 2.65e5, legacy
-  2.6e5), N = 1e5 at 2.6e5 from Python; rejection-free LJ 5.7e4 and DPD 1.4e5
-  reflections/s (first version: 2.0e4 and 5.4e4). Gains: no size optimisation of the
+  2.6e5), N = 1e5 at 2.6e5 from Python; rejection-free LJ 7.1e4 reflections/s (first version: 2.0e4; DPD about
+  1.4e5). Gains: no size optimisation of the
   extension (nanobind NOMINSIZE), cell-sorted storage, crossing re-prediction over the
-  new cell layer only, geometric pre-checks in the rejection-free prediction.
+  new cell layer only, geometric pre-checks in the rejection-free prediction, cells of
+  half the cutoff with a 5^D stencil for the rejection-free engine, cheaper pair hash.
 - Next: release 0.2.0 (after user approval); event-chain variant of the
-  rejection-free method; further performance (neighbour lists for the rejection-free
-  engine, which scans 27 cells of the cutoff size).
+  rejection-free method; further performance (the stencil loop over mostly empty cells now costs
+  about a quarter of the rejection-free time; precomputed cell neighbour lists would
+  remove it).
 
 ## Robustness rules for event prediction
 

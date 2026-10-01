@@ -1,6 +1,7 @@
 /// @file cell_grid.hpp
-/// @brief Cell list on a box: doubly linked lists of particles per cell, and a 3^D stencil
-/// that yields every (cell, periodic image shift) pair a particle may touch.
+/// @brief Cell list on a box: doubly linked lists of particles per cell, and a
+/// \f$(2m+1)^D\f$ stencil that yields every (cell, periodic image shift) pair a particle
+/// may touch.
 #pragma once
 
 #include <algorithm>
@@ -35,8 +36,11 @@ class CellGrid {
   /// @param min_width lower bound on the cell width along every axis, typically the
   ///        largest interaction distance; a value <= 0 requests the finest grid allowed
   /// @param max_cells approximate upper bound on the total number of cells
-  void build(const Box<D>& box, double min_width, std::size_t max_cells) {
+  /// @param stencil stencil radius m in cells: neighbours are searched in offsets -m..m
+  ///        per axis, so cells may be as narrow as the interaction distance divided by m
+  void build(const Box<D>& box, double min_width, std::size_t max_cells, int stencil = 1) {
     box_ = box;
+    m_ = std::max(1, stencil);
     for (int k = 0; k < D; ++k) {
       const double n = min_width > 0.0 ? std::floor(box.L[k] / min_width) : 1e9;
       n_[k] = static_cast<int>(std::clamp(n, 1.0, 1e6));
@@ -79,6 +83,8 @@ class CellGrid {
 
   /// @return number of cells along axis `k`
   int n(int k) const noexcept { return n_[k]; }
+  /// @return the stencil radius m
+  int stencil() const noexcept { return m_; }
   /// @return cell width along axis `k`
   double width(int k) const noexcept { return w_[k]; }
   /// @return total number of cells
@@ -150,7 +156,8 @@ class CellGrid {
 
   /// @brief Like for_each_neighbor(), but only the layer of the stencil at offset `dir`
   /// (+1 or -1) along `axis`: the cells that become adjacent when a particle moves into
-  /// `cell` across that face. Requires at least three cells along `axis`.
+  /// `cell` across that face (offset m along `axis`). Callers fall back to a full scan
+  /// when there are fewer than 2m + 1 cells along `axis`.
   /// @param cell centre cell of the stencil
   /// @param axis axis of the move
   /// @param dir direction of the move along `axis` (+1 or -1)
@@ -159,23 +166,19 @@ class CellGrid {
   void for_each_neighbor_layer(std::int32_t cell, int axis, int dir, F&& f) const {
     const Index c = coords(cell);
     std::array<int, D> o;
-    o.fill(-1);
-    o[axis] = dir;
+    o.fill(-m_);
+    o[axis] = dir * m_;
     for (;;) {
       Index nc;
       std::array<int, D> shift{};
       bool valid = true;
       for (int k = 0; k < D && valid; ++k) {
         int ck = c[k] + o[k];
-        if (ck < 0) {
-          if (box_.periodic[k]) {
-            ck += n_[k];
-            shift[k] = -1;
-          } else valid = false;
-        } else if (ck >= n_[k]) {
-          if (box_.periodic[k]) {
-            ck -= n_[k];
-            shift[k] = 1;
+        if (ck < 0 || ck >= n_[k]) {
+          if (box_.periodic[k]) {  // wrap, possibly more than once in small boxes
+            const int s = ck >= 0 ? ck / n_[k] : -((-ck + n_[k] - 1) / n_[k]);
+            ck -= s * n_[k];
+            shift[k] = s;
           } else valid = false;
         }
         nc[k] = ck;
@@ -183,19 +186,20 @@ class CellGrid {
       if (valid)
         for (std::int32_t j = head_[flat(nc)]; j != none; j = next_[j]) f(static_cast<std::uint32_t>(j), shift);
       int k = 0;
-      while (k < D && (k == axis || ++o[k] > 1)) {
-        if (k != axis) o[k] = -1;
+      while (k < D && (k == axis || ++o[k] > m_)) {
+        if (k != axis) o[k] = -m_;
         ++k;
       }
       if (k == D) break;
     }
   }
 
-  /// @brief Visit every particle in the \f$3^D\f$ stencil of cells around `cell`.
+  /// @brief Visit every particle in the \f$(2m+1)^D\f$ stencil of cells around `cell`.
   ///
   /// Calls `f(j, shift)` for each particle `j` found, where the image of `j` to use is
-  /// \f$x_j + \mathrm{shift}\cdot L\f$ (componentwise, shift entries in {-1, 0, 1}).
-  /// On periodic axes with fewer than three cells the stencil visits the same cell
+  /// \f$x_j + \mathrm{shift}\cdot L\f$ (componentwise integers). Every stencil offset
+  /// is a distinct periodic image. On periodic axes with fewer than 2m + 1 cells the
+  /// stencil visits the same cell
   /// with different shifts, which is what makes small periodic boxes correct. On
   /// non-periodic axes stencil cells outside the grid are skipped. Includes the
   /// particle itself with shift 0.
@@ -206,22 +210,18 @@ class CellGrid {
   void for_each_neighbor(std::int32_t cell, F&& f) const {
     const Index c = coords(cell);
     std::array<int, D> o;
-    o.fill(-1);
+    o.fill(-m_);
     for (;;) {
       Index nc;
       std::array<int, D> shift{};
       bool valid = true;
       for (int k = 0; k < D && valid; ++k) {
         int ck = c[k] + o[k];
-        if (ck < 0) {
-          if (box_.periodic[k]) {
-            ck += n_[k];
-            shift[k] = -1;
-          } else valid = false;
-        } else if (ck >= n_[k]) {
-          if (box_.periodic[k]) {
-            ck -= n_[k];
-            shift[k] = 1;
+        if (ck < 0 || ck >= n_[k]) {
+          if (box_.periodic[k]) {  // wrap, possibly more than once in small boxes
+            const int s = ck >= 0 ? ck / n_[k] : -((-ck + n_[k] - 1) / n_[k]);
+            ck -= s * n_[k];
+            shift[k] = s;
           } else valid = false;
         }
         nc[k] = ck;
@@ -230,7 +230,7 @@ class CellGrid {
         for (std::int32_t j = head_[flat(nc)]; j != none; j = next_[j])
           f(static_cast<std::uint32_t>(j), shift);
       int k = 0;
-      while (k < D && ++o[k] > 1) o[k++] = -1;
+      while (k < D && ++o[k] > m_) o[k++] = -m_;
       if (k == D) break;
     }
   }
@@ -238,6 +238,7 @@ class CellGrid {
  private:
   Box<D> box_{};                   ///< container, for periodicity
   std::array<int, D> n_{};         ///< cells per axis
+  int m_ = 1;                      ///< stencil radius in cells: offsets -m..m per axis
   Vec<D> w_{};                     ///< cell width per axis
   /// Linked lists: `head_[cell]` first particle, `next_`/`prev_` neighbours in the list,
   /// `cell_[i]` the cell of particle i; all `none` when absent.

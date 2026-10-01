@@ -202,6 +202,8 @@ class RejectionFreeMC {
       for (auto& v : p_[i].v) v = rng_.normal();
     }
     ev_.resize(p_.size());
+    pair_ev_.resize(p_.size());
+    pair_t_.assign(p_.size(), never);
     wrap_positions();
   }
 
@@ -289,6 +291,10 @@ class RejectionFreeMC {
     return u;
   }
 
+  /// @brief Testing aid: re-predict with a full neighbour scan after every cell crossing
+  /// instead of scanning only the new cell layer. The trajectory must be the same.
+  void set_full_rescan(bool on) noexcept { full_rescan_ = on; }
+
   /// @return the accumulated run statistics
   const RejectionFreeStats& stats() const noexcept { return stats_; }
   /// @return the number of particles
@@ -348,7 +354,10 @@ class RejectionFreeMC {
   }
 
   void prepare_events() {
-    grid_.build(box_, pot_.cutoff, 2 * p_.size() + 27);
+    // Cells of half the cutoff with a 5^D stencil scan 15.6 r_c^3 instead of 27 r_c^3 per
+    // full prediction in 3D. The cap on the number of cells only matters for very dilute
+    // systems.
+    grid_.build(box_, 0.5 * pot_.cutoff, 8 * p_.size() + 125, 2);
     grid_.clear_particles(p_.size());
     for (std::uint32_t i = 0; i < p_.size(); ++i) grid_.insert(i, grid_.flat(grid_.coords_of(p_[i].x)));
     std::vector<double> keys(p_.size());
@@ -364,12 +373,14 @@ class RejectionFreeMC {
   double pair_uniform(std::uint32_t i, std::uint32_t j, const std::array<std::int32_t, D>& image) const noexcept {
     const bool swap = j < i;
     const std::uint32_t a = swap ? j : i, b = swap ? i : j;
-    std::uint64_t h = mix64(seed_ ^ a);
-    h = mix64(h ^ (static_cast<std::uint64_t>(b) << 1));
-    h = mix64(h ^ p_[a].counter);
-    h = mix64(h ^ (p_[b].counter * 0x9e3779b97f4a7c15ULL));
-    for (int k = 0; k < D; ++k)  // image as seen from the lower index
-      h = mix64(h ^ static_cast<std::uint64_t>(static_cast<std::int64_t>(swap ? -image[k] : image[k]) + 1024));
+    // Two SplitMix64 finalisations of the key combined with distinct odd multipliers.
+    std::uint64_t img = 0;
+    for (int k = 0; k < D; ++k)  // image as seen from the lower index, 21 bits per axis
+      img = (img << 21) ^ (static_cast<std::uint64_t>((swap ? -image[k] : image[k]) + (1 << 20)) & 0x1FFFFFULL);
+    std::uint64_t h = mix64(seed_ ^ (static_cast<std::uint64_t>(a) * 0x9e3779b97f4a7c15ULL) ^
+                            (static_cast<std::uint64_t>(b) * 0xc2b2ae3d27d4eb4fULL));
+    h = mix64(h ^ (p_[a].counter * 0x165667b19e3779f9ULL) ^ (p_[b].counter * 0xd6e8feb86659fd93ULL) ^
+              (img * 0xff51afd7ed558ccdULL));
     return 1.0 - to_unit_interval(h);
   }
 
@@ -384,11 +395,67 @@ class RejectionFreeMC {
   }
 
   double predict(std::uint32_t i) {
-    const Particle& pi = p_[i];
     Event best;
     double t_best = never;
-    // Cell crossing (positions advanced to now for the cell bookkeeping).
+    grid_.for_each_neighbor(grid_.cell_of(i), [&](std::uint32_t j, const std::array<int, D>& shift) {
+      consider_pair(i, j, shift, best, t_best);
+    });
+    pair_ev_[i] = best;
+    pair_t_[i] = t_best;
+    return combine_with_crossing(i);
+  }
+
+  // After particle i crossed a cell face its straight path is unchanged: the stored pair
+  // event stays valid unless the partner changed direction, and only the cell layer
+  // that became adjacent needs scanning.
+  double predict_after_crossing(std::uint32_t i, int axis, int dir) {
+    const Event& old = pair_ev_[i];
+    const bool stale = old.type == EventType::pair && p_[old.partner].counter != old.partner_counter;
+    if (full_rescan_ || stale || grid_.n(axis) < 2 * grid_.stencil() + 1) return predict(i);
+    Event best = old;
+    double t_best = pair_t_[i];
+    grid_.for_each_neighbor_layer(grid_.cell_of(i), axis, dir, [&](std::uint32_t j, const std::array<int, D>& shift) {
+      consider_pair(i, j, shift, best, t_best);
+    });
+    pair_ev_[i] = best;
+    pair_t_[i] = t_best;
+    return combine_with_crossing(i);
+  }
+
+  void consider_pair(std::uint32_t i, std::uint32_t j, const std::array<int, D>& shift, Event& best,
+                     double& t_best) const noexcept {
+    if (j == i) return;
+    const Particle& pi = p_[i];
+    const Particle& pj = p_[j];
+    const double t0 = std::max(pi.t_seg, pj.t_seg);  // start of the pair's straight segment
+    Vec<D> r, u;
+    for (int k = 0; k < D; ++k) {
+      r[k] = pj.x[k] + pj.v[k] * (t0 - pj.t) + shift[k] * box_.L[k] - pi.x[k] - pi.v[k] * (t0 - pi.t);
+      u[k] = pj.v[k] - pi.v[k];
+    }
+    const double r2 = norm2<D>(r), b = dot<D>(r, u), u2 = norm2<D>(u);
+    if (!may_reflect(r2, b, u2)) return;  // no uphill part on this segment: skip the random number
+    std::array<std::int32_t, D> image;
+    for (int k = 0; k < D; ++k) image[k] = shift[k] - pj.img[k] + pi.img[k];
+    const double du = -kT_ * std::log(pair_uniform(i, j, image));
+    const double tau = reflection_time(r2, b, u2, du, pot_);
+    if (tau == never) return;
+    const double t = std::max(now_, t0 + tau);
+    if (t < t_best) {
+      t_best = t;
+      best.type = EventType::pair;
+      best.partner = j;
+      best.partner_counter = pj.counter;
+      best.image = image;
+    }
+  }
+
+  // Next cell crossing of particle i, combined with its stored pair event into ev_[i].
+  double combine_with_crossing(std::uint32_t i) {
+    const Particle& pi = p_[i];
     const auto c = grid_.coords(grid_.cell_of(i));
+    Event cross;
+    double t_cross = never;
     for (int k = 0; k < D; ++k) {
       const double v = pi.v[k];
       const double xk = pi.x[k] + v * (now_ - pi.t);
@@ -401,40 +468,19 @@ class RejectionFreeMC {
         t = now_ + std::max(0.0, (c[k] * grid_.width(k) - xk) / v);
         dir = -1;
       }
-      if (t < t_best) {
-        t_best = t;
-        best.type = EventType::cross;
-        best.axis = static_cast<std::int8_t>(k);
-        best.dir = dir;
+      if (t < t_cross) {
+        t_cross = t;
+        cross.type = EventType::cross;
+        cross.axis = static_cast<std::int8_t>(k);
+        cross.dir = dir;
       }
     }
-    grid_.for_each_neighbor(grid_.cell_of(i), [&](std::uint32_t j, const std::array<int, D>& shift) {
-      if (j == i) return;
-      const Particle& pj = p_[j];
-      const double t0 = std::max(pi.t_seg, pj.t_seg);  // start of the pair's straight segment
-      Vec<D> r, u;
-      for (int k = 0; k < D; ++k) {
-        r[k] = pj.x[k] + pj.v[k] * (t0 - pj.t) + shift[k] * box_.L[k] - pi.x[k] - pi.v[k] * (t0 - pi.t);
-        u[k] = pj.v[k] - pi.v[k];
-      }
-      std::array<std::int32_t, D> image;
-      for (int k = 0; k < D; ++k) image[k] = shift[k] - pj.img[k] + pi.img[k];
-      const double r2 = norm2<D>(r), b = dot<D>(r, u), u2 = norm2<D>(u);
-      if (!may_reflect(r2, b, u2)) return;  // no uphill part on this segment: skip the random number
-      const double du = -kT_ * std::log(pair_uniform(i, j, image));
-      const double tau = reflection_time(r2, b, u2, du, pot_);
-      if (tau == never) return;
-      const double t = std::max(now_, t0 + tau);
-      if (t < t_best) {
-        t_best = t;
-        best.type = EventType::pair;
-        best.partner = j;
-        best.partner_counter = pj.counter;
-        best.image = image;
-      }
-    });
-    ev_[i] = best;
-    return t_best;
+    if (t_cross < pair_t_[i]) {
+      ev_[i] = cross;
+      return t_cross;
+    }
+    ev_[i] = pair_ev_[i];
+    return pair_t_[i];
   }
 
   void handle(std::uint32_t i) {
@@ -455,7 +501,7 @@ class RejectionFreeMC {
         ++pi.img[k];
       }
       grid_.move(i, grid_.flat(c));
-      heap_.update(i, predict(i));
+      heap_.update(i, predict_after_crossing(i, k, e.dir));
       return;
     }
     if (e.type != EventType::pair) {
@@ -497,13 +543,16 @@ class RejectionFreeMC {
   std::uint64_t seed_;
   Rng rng_;
   std::vector<Particle> p_;
-  std::vector<Event> ev_;
+  std::vector<Event> ev_;          ///< next event of each particle
+  std::vector<Event> pair_ev_;     ///< best pair event of each particle from its last scan
+  std::vector<double> pair_t_;     ///< time of pair_ev_
   EventHeap heap_;
   CellGrid<D> grid_;
   RejectionFreeStats stats_;
   double now_ = 0.0;
   std::uint64_t since_sync_ = 0;
   bool ready_ = false;
+  bool full_rescan_ = false;
 };
 
 }  // namespace spheropack
