@@ -1,0 +1,158 @@
+{
+ "meta": {
+  "date": "2026-10-01T13:12:26+02:00",
+  "legacy_dir": "/home/eajfpeters/Code/packing",
+  "legacy_commit": "19813daa6decc3d94f302c4873ce312987700862",
+  "description": "Throughput of legacy code, N=10000. Timings taken with up to 12 concurrent jobs on the machine.",
+  "N": 10000,
+  "seeds": [
+   1,
+   2,
+   3
+  ],
+  "target_phis": [
+   0.55,
+   0.58
+  ],
+  "growth_rate": 0.16,
+  "cap_per_particle": 10000,
+  "build_command": "g++ -O2 -std=c++17 -I/home/eajfpeters/Code/packing /home/eajfpeters/Code/spheropack/tests/baselines/legacy_driver.cpp -o /tmp/tmplf8veowh/legacy_driver",
+  "elapsed_s": 2.780860424041748
+ },
+ "runs": [
+  {
+   "N": 10000,
+   "seed": 1,
+   "target_phi": 0.55,
+   "growth_rate": 0.16,
+   "cap_per_particle": 10000,
+   "reached": true,
+   "phi_final": 0.55,
+   "t_sim": 6.25,
+   "n_collisions": 325958,
+   "wall_time_s": 1.321781,
+   "collisions_per_s": 246605,
+   "command": "/tmp/tmplf8veowh/legacy_driver 10000 1 0.55 0.16 10000"
+  },
+  {
+   "N": 10000,
+   "seed": 2,
+   "target_phi": 0.55,
+   "growth_rate": 0.16,
+   "cap_per_particle": 10000,
+   "reached": true,
+   "phi_final": 0.55,
+   "t_sim": 6.25,
+   "n_collisions": 320014,
+   "wall_time_s": 1.318026,
+   "collisions_per_s": 242798,
+   "command": "/tmp/tmplf8veowh/legacy_driver 10000 2 0.55 0.16 10000"
+  },
+  {
+   "N": 10000,
+   "seed": 3,
+   "target_phi": 0.55,
+   "growth_rate": 0.16,
+   "cap_per_particle": 10000,
+   "reached": true,
+   "phi_final": 0.55,
+   "t_sim": 6.25,
+   "n_collisions": 326836,
+   "wall_time_s": 1.556604,
+   "collisions_per_s": 209967,
+   "command": "/tmp/tmplf8veowh/legacy_driver 10000 3 0.55 0.16 10000"
+  },
+  {
+   "N": 10000,
+   "seed": 1,
+   "target_phi": 0.58,
+   "growth_rate": 0.16,
+   "cap_per_particle": 10000,
+   "reached": true,
+   "phi_final": 0.58,
+   "t_sim": 6.25,
+   "n_collisions": 557174,
+   "wall_time_s": 2.753962,
+   "collisions_per_s": 202317,
+   "command": "/tmp/tmplf8veowh/legacy_driver 10000 1 0.58 0.16 10000"
+  },
+  {
+   "N": 10000,
+   "seed": 2,
+   "target_phi": 0.58,
+   "growth_rate": 0.16,
+   "cap_per_particle": 10000,
+   "reached": true,
+   "phi_final": 0.58,
+   "t_sim": 6.25,
+   "n_collisions": 575772,
+   "wall_time_s": 2.545887,
+   "collisions_per_s": 226158,
+   "command": "/tmp/tmplf8veowh/legacy_driver 10000 2 0.58 0.16 10000"
+  },
+  {
+   "N": 10000,
+   "seed": 3,
+   "target_phi": 0.58,
+   "growth_rate": 0.16,
+   "cap_per_particle": 10000,
+   "reached": true,
+   "phi_final": 0.58,
+   "t_sim": 6.25,
+   "n_collisions": 518364,
+   "wall_time_s": 2.310322,
+   "collisions_per_s": 224369,
+   "command": "/tmp/tmplf8veowh/legacy_driver 10000 3 0.58 0.16 10000"
+  }
+ ],
+ "summary": {
+  "0.55": {
+   "collisions_per_s": {
+    "mean": 233123.33333333334,
+    "std": 20144.10937056621,
+    "min": 209967.0,
+    "max": 246605.0,
+    "n": 3
+   },
+   "n_collisions": {
+    "mean": 324269.3333333333,
+    "std": 3711.282437828376,
+    "min": 320014.0,
+    "max": 326836.0,
+    "n": 3
+   },
+   "wall_time_s": {
+    "mean": 1.3988036666666668,
+    "std": 0.13667199386243453,
+    "min": 1.318026,
+    "max": 1.556604,
+    "n": 3
+   },
+   "all_reached": true
+  },
+  "0.58": {
+   "collisions_per_s": {
+    "mean": 217614.66666666666,
+    "std": 13278.331383623974,
+    "min": 202317.0,
+    "max": 226158.0,
+    "n": 3
+   },
+   "n_collisions": {
+    "mean": 550436.6666666666,
+    "std": 29291.011613348786,
+    "min": 518364.0,
+    "max": 575772.0,
+    "n": 3
+   },
+   "wall_time_s": {
+    "mean": 2.5367236666666666,
+    "std": 0.22196190530884638,
+    "min": 2.310322,
+    "max": 2.753962,
+    "n": 3
+   },
+   "all_reached": true
+  }
+ }
+}

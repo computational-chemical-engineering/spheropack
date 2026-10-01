@@ -1,0 +1,7 @@
+sphinx>=7
+pydata-sphinx-theme
+myst-nb
+breathe
+sphinx-copybutton
+sphinxcontrib-bibtex
+matplotlib
