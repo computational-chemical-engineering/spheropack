@@ -39,3 +39,13 @@ notebooks/04_packed_tubes
 api/python
 api/cpp
 ```
+
+```{toctree}
+:maxdepth: 1
+:caption: Project
+
+changelog
+citing
+contributing
+references
+```

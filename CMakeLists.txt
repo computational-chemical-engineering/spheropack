@@ -29,6 +29,14 @@ if(SKBUILD)
   nanobind_add_module(_core STABLE_ABI NB_STATIC src/bindings.cpp)
   target_link_libraries(_core PRIVATE spheropack_core)
   install(TARGETS _core LIBRARY DESTINATION spheropack)
+  # Type stub for the extension (imports the built module at build time).
+  nanobind_add_stub(_core_stub
+    MODULE _core
+    OUTPUT _core.pyi
+    INCLUDE_PRIVATE
+    PYTHON_PATH $<TARGET_FILE_DIR:_core>
+    DEPENDS _core)
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/_core.pyi DESTINATION spheropack)
 endif()
 
 if(SPHEROPACK_BUILD_TESTS)

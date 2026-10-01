@@ -4,20 +4,48 @@ import math
 
 import numpy as np
 import pytest
+from helpers import min_gap_ratio
 
 import spheropack as sp
 from spheropack import _core
-from helpers import min_gap_ratio
 
 INF = float("inf")
 
 
-def _run(radii, lengths, periodic, *, growth_rate, positions, scale, velocities, max_time=INF,
-         rule="elastic_growing", target=INF, max_collisions=0, jammed=INF):
+def _run(
+    radii,
+    lengths,
+    periodic,
+    *,
+    growth_rate,
+    positions,
+    scale,
+    velocities,
+    max_time=INF,
+    rule="elastic_growing",
+    target=INF,
+    max_collisions=0,
+    jammed=INF,
+):
     return _core._ls_pack3(
-        np.asarray(radii, float), list(lengths), list(periodic), target, growth_rate, INF, jammed,
-        0.0, 100.0, max_collisions, max_time, INF, 10.0, 0, rule,
-        np.ascontiguousarray(positions, float), scale, np.ascontiguousarray(velocities, float),
+        np.asarray(radii, float),
+        list(lengths),
+        list(periodic),
+        target,
+        growth_rate,
+        INF,
+        jammed,
+        0.0,
+        100.0,
+        max_collisions,
+        max_time,
+        INF,
+        10.0,
+        0,
+        rule,
+        np.ascontiguousarray(positions, float),
+        scale,
+        np.ascontiguousarray(velocities, float),
     )
 
 
@@ -31,8 +59,17 @@ def test_head_on_collision_of_growing_spheres(rule):
     u = 1.2 * f
     dsig = gamma  # ds/dt = gamma / mean diameter = gamma; sigma = s
     t_contact = 1.0 / (u + dsig)
-    out = _run([0.5, 0.5], [10, 10, 10], [True] * 3, growth_rate=gamma,
-               positions=[[4, 5, 5], [6, 5, 5]], scale=1.0, velocities=v, max_time=t_contact * 1.01, rule=rule)
+    out = _run(
+        [0.5, 0.5],
+        [10, 10, 10],
+        [True] * 3,
+        growth_rate=gamma,
+        positions=[[4, 5, 5], [6, 5, 5]],
+        scale=1.0,
+        velocities=v,
+        max_time=t_contact * 1.01,
+        rule=rule,
+    )
     assert out["n_collisions"] == 1
     un_after = 2 * dsig + u if rule == "elastic_growing" else max(u, dsig)
     delta = un_after + u
@@ -49,8 +86,17 @@ def test_wall_collision_of_a_growing_sphere(rule):
     f = math.sqrt(3.0)  # kT = 1/3 rescaled to 1
     drho = 0.5 * gamma  # ds/dt = gamma, radius 0.5 s
     t_contact = (2.0 - 0.5) / (f + drho)
-    out = _run([0.5], [10, 10, 10], [False, True, True], growth_rate=gamma,
-               positions=[[2, 5, 5]], scale=1.0, velocities=v, max_time=t_contact * 1.01, rule=rule)
+    out = _run(
+        [0.5],
+        [10, 10, 10],
+        [False, True, True],
+        growth_rate=gamma,
+        positions=[[2, 5, 5]],
+        scale=1.0,
+        velocities=v,
+        max_time=t_contact * 1.01,
+        rule=rule,
+    )
     expected = 2 * drho + f if rule == "elastic_growing" else f
     assert out["velocities"][0, 0] == pytest.approx(expected, abs=1e-12)
 
@@ -65,8 +111,16 @@ def test_equation_of_state_at_fixed_radii(phi):
     rng = np.random.default_rng(2)
     v = rng.normal(size=(1000, 3))
     v -= v.mean(axis=0)
-    out = _run(start.radii, [1.0] * 3, [True] * 3, growth_rate=0.0, positions=start.positions,
-               scale=1.0, velocities=v, max_collisions=300_000)
+    out = _run(
+        start.radii,
+        [1.0] * 3,
+        [True] * 3,
+        growth_rate=0.0,
+        positions=start.positions,
+        scale=1.0,
+        velocities=v,
+        max_collisions=300_000,
+    )
     z = out["history"]["reduced_pressure"][3:]  # skip the first windows (relaxation)
     assert z.mean() == pytest.approx(_carnahan_starling(phi), rel=0.02)
 

@@ -21,8 +21,16 @@ def _arrest(n, growth_rate, seeds):
         warnings.simplefilter("ignore", sp.PackingWarning)  # a budget stop counts as failure
         return np.array(
             [
-                sp.pack(n=n, radii=0.5, container=box, density="max", growth_rate=growth_rate, seed=s,
-                        collision_rule="legacy", stop=stop).density
+                sp.pack(
+                    n=n,
+                    radii=0.5,
+                    container=box,
+                    density="max",
+                    growth_rate=growth_rate,
+                    seed=s,
+                    collision_rule="legacy",
+                    stop=stop,
+                ).density
                 for s in seeds
             ]
         )

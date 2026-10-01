@@ -43,7 +43,7 @@ def neighbor_pairs(packing: Packing, cutoff: float) -> tuple[np.ndarray, np.ndar
         Connecting vectors from ``i`` to the image of ``j``, shape ``(m, dim)``.
     """
     c = packing.container
-    periodic_lengths = [L for L, p in zip(c.lengths, c.periodic) if p]
+    periodic_lengths = [L for L, p in zip(c.lengths, c.periodic, strict=True) if p]
     if periodic_lengths and cutoff > min(periodic_lengths):
         raise ValueError("cutoff must not exceed the smallest periodic edge of the box")
     find = _core._neighbor_pairs3 if packing.dim == 3 else _core._neighbor_pairs2
@@ -295,9 +295,9 @@ def _slice_measure(t0: np.ndarray, t1: np.ndarray, R: np.ndarray, dim: int) -> n
     t0 = np.clip(t0, -R, R)
     t1 = np.clip(t1, -R, R)
     if dim == 3:
-        F = lambda t: math.pi * (R * R * t - t**3 / 3.0)  # noqa: E731
+        F = lambda t: math.pi * (R * R * t - t**3 / 3.0)
     else:
-        F = lambda t: t * np.sqrt(np.maximum(R * R - t * t, 0.0)) + R * R * np.arcsin(t / R)  # noqa: E731
+        F = lambda t: t * np.sqrt(np.maximum(R * R - t * t, 0.0)) + R * R * np.arcsin(t / R)
     return np.maximum(F(t1) - F(t0), 0.0)
 
 
@@ -360,7 +360,9 @@ def crystalline(
 
     def accumulate(values_i, values_j):
         out = np.bincount(i, weights=values_i.real, minlength=n) + np.bincount(j, weights=values_j.real, minlength=n)
-        return out + 1j * (np.bincount(i, weights=values_i.imag, minlength=n) + np.bincount(j, weights=values_j.imag, minlength=n))
+        return out + 1j * (
+            np.bincount(i, weights=values_i.imag, minlength=n) + np.bincount(j, weights=values_j.imag, minlength=n)
+        )
 
     if dim == 2:
         e = np.exp(1j * l * np.arctan2(rv[:, 1], rv[:, 0]))

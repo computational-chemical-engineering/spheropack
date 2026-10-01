@@ -14,10 +14,11 @@ Examples
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import ClassVar, Iterable
+from typing import ClassVar
 
-__all__ = ["Collisions", "Criterion", "DEFAULT", "DEFAULT_MAX", "Jammed", "Pressure", "Stall", "Timeout"]
+__all__ = ["DEFAULT", "DEFAULT_MAX", "Collisions", "Criterion", "Jammed", "Pressure", "Stall", "Timeout"]
 
 
 @dataclass(frozen=True)
@@ -76,10 +77,9 @@ class Pressure(Criterion):
     ``Z`` is the mean over all spheres, measured from the collision virial over
     windows of 10 collisions per sphere while the spheres keep growing. It can spike
     when a few spheres collide at very high rates; :class:`Jammed` uses the median
-    and is the better choice to obtain jammed packings. It diverges at jamming as roughly ``Z ~ D / (1 - phi/phi_J)`` for
-    quasi-static growth, so ``Pressure(1e6)`` stops at about ``3e-6`` relative
-    distance from the jamming density in 3D. A clear contact network (for counting
-    contacts) needs about ``1e9``.
+    and is the better choice to obtain jammed packings. For quasi-static growth ``Z``
+    diverges at jamming as roughly ``Z ~ D / (1 - phi/phi_J)``, so ``Pressure(1e6)``
+    stops at about ``3e-6`` relative distance from the jamming density in 3D.
     """
 
     value: float = 1e6
@@ -130,7 +130,10 @@ class Collisions(Criterion):
             raise ValueError("total must be a whole number")
 
     def budget(self, n: int) -> int:
-        return int(self.total) if self.total is not None else max(1, math.ceil(self.per_particle * n))
+        if self.total is not None:
+            return int(self.total)
+        assert self.per_particle is not None  # guaranteed by __post_init__
+        return max(1, math.ceil(self.per_particle * n))
 
 
 @dataclass(frozen=True)
@@ -171,8 +174,15 @@ def _engine_options(stop: tuple[Criterion, ...], n: int) -> tuple[dict, dict[str
     """Reduces criteria to the scalar engine options (strictest value per type) and
     maps every status name to the criterion that produces it."""
     opts = dict(
-        max_pressure=math.inf, jammed_pressure=math.inf, jam_start_pressure=1e3, jam_relax_windows=4,
-        jam_step=0.2, stall_tol=0.0, stall_window=100.0, max_collisions=0, timeout=math.inf,
+        max_pressure=math.inf,
+        jammed_pressure=math.inf,
+        jam_start_pressure=1e3,
+        jam_relax_windows=4,
+        jam_step=0.2,
+        stall_tol=0.0,
+        stall_window=100.0,
+        max_collisions=0,
+        timeout=math.inf,
     )
     effective: dict[str, Criterion] = {}
     for c in stop:
@@ -180,8 +190,12 @@ def _engine_options(stop: tuple[Criterion, ...], n: int) -> tuple[dict, dict[str
             opts["max_pressure"] = c.value
             effective[c.name] = c
         elif isinstance(c, Jammed):
-            opts.update(jammed_pressure=c.pressure, jam_start_pressure=c.start_pressure,
-                        jam_relax_windows=int(c.relax_windows), jam_step=c.step)
+            opts.update(
+                jammed_pressure=c.pressure,
+                jam_start_pressure=c.start_pressure,
+                jam_relax_windows=int(c.relax_windows),
+                jam_step=c.step,
+            )
             effective[c.name] = c
         elif isinstance(c, Stall):
             opts["stall_tol"], opts["stall_window"] = c.tol, c.window

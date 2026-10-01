@@ -16,8 +16,13 @@ def test_largest_sphere_reaching_the_box_size_stops():
 
 
 def test_thin_periodic_box_stops():
-    p = sp.pack(n=2, density="max", container=sp.PeriodicBox([1.0, 0.3, 1.0]), seed=1,
-                stop=[sp.stop.Jammed(), sp.stop.Timeout(10)])
+    p = sp.pack(
+        n=2,
+        density="max",
+        container=sp.PeriodicBox([1.0, 0.3, 1.0]),
+        seed=1,
+        stop=[sp.stop.Jammed(), sp.stop.Timeout(10)],
+    )
     assert p.status in ("box_limit", "jammed") and p.wall_time < 1
 
 
@@ -74,4 +79,5 @@ def test_csv_keeps_touching_spheres_apart(tmp_path):
     p.to_csv(f, header=False)
     data = np.loadtxt(f, delimiter=",")
     from helpers import min_gap_ratio
+
     assert min_gap_ratio(data[:, :3], data[:, 3], [1.0] * 3, [True] * 3) > -1e-15

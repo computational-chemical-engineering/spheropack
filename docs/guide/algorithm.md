@@ -125,8 +125,3 @@ pairs and walls is computed exactly. Round-off can leave overlaps of order
 $10^{-15}$ relative to the diameter; they are removed by shrinking all radii by the
 same factor, which is reported as `shrink_factor`.
 
-## References
-
-```{bibliography}
-:filter: docname in docnames
-```

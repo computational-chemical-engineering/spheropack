@@ -21,7 +21,7 @@ def _draw(ax, centres, radii, lengths, color, edgecolor, outline=None):
     from matplotlib.collections import PatchCollection
     from matplotlib.patches import Circle, Rectangle
 
-    patches = [Circle(c, r) for c, r in zip(centres, radii)]
+    patches = [Circle(c, r) for c, r in zip(centres, radii, strict=True)]
     ax.add_collection(PatchCollection(patches, facecolor=color, edgecolor=edgecolor, linewidth=0.4))
     if outline is None:
         ax.add_patch(Rectangle((0, 0), lengths[0], lengths[1], fill=False, linewidth=1.0, edgecolor="k"))

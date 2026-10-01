@@ -22,14 +22,18 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering :: Physics",
     "Topic :: Scientific/Engineering :: Chemistry",
+    "Typing :: Typed",
 ]
 
 [project.optional-dependencies]
 test = ["pytest>=7"]
-plot = ["matplotlib", "pyvista"]
+plot = ["matplotlib"]
+docs = ["sphinx>=7", "pydata-sphinx-theme", "myst-nb", "breathe", "sphinx-copybutton", "sphinxcontrib-bibtex", "matplotlib"]
+dev = ["spheropack[test,plot,docs]", "pytest-cov", "ruff", "mypy", "pre-commit"]
 
 [project.scripts]
 spheropack = "spheropack.cli:main"
@@ -70,3 +74,27 @@ manylinux-aarch64-image = "manylinux_2_28"
 [tool.cibuildwheel.macos]
 # nanobind needs aligned allocation (macOS 10.13+); C++20 library support from 10.15.
 environment = { MACOSX_DEPLOYMENT_TARGET = "10.15" }
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+extend-exclude = ["docs/notebooks", "tests/baselines"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "NPY", "RUF"]
+ignore = ["E731", "E741", "RUF001", "RUF002", "RUF003"]  # l: angular order of Y_lm
+
+[tool.ruff.lint.isort]
+known-first-party = ["spheropack"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B018"]
+
+[tool.ruff.format]
+exclude = ["docs/notebooks"]
+
+[tool.mypy]
+python_version = "3.10"
+packages = ["spheropack"]
+ignore_missing_imports = true
+warn_unused_ignores = true

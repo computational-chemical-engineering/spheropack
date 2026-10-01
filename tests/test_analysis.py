@@ -11,8 +11,7 @@ from spheropack.packing import Packing
 def _packing(positions, radii, container):
     positions = np.asarray(positions, float)
     radii = np.full(len(positions), radii) if np.ndim(radii) == 0 else np.asarray(radii)
-    return Packing(positions, radii,
-                   container, "target_reached", 0.0, 0.0, 0, 0, 0.0, 0.0, 0.0, 1.0, 0, 0.0)
+    return Packing(positions, radii, container, "target_reached", 0.0, 0.0, 0, 0, 0.0, 0.0, 0.0, 1.0, 0, 0.0)
 
 
 def _fcc(cells):
@@ -79,7 +78,7 @@ def test_random_packing_has_little_global_order():
 def test_ideal_gas_rdf_is_one():
     rng = np.random.default_rng(0)
     p = _packing(rng.uniform(0, 1, (4000, 3)), 0.01, sp.PeriodicBox(1.0))
-    r, g = analysis.radial_distribution(p, r_max=0.3, bins=30)
+    _, g = analysis.radial_distribution(p, r_max=0.3, bins=30)
     assert abs(g[5:].mean() - 1.0) < 0.02
 
 
@@ -109,11 +108,12 @@ def test_contact_based_rattlers_agree_roughly_with_force_based():
 
 
 @pytest.mark.parametrize(
-    "container", [sp.PeriodicBox(1.0), sp.Box([1.0, 1.0, 1.2], periodic=[True, True, False]), sp.PeriodicBox(1.0, dim=2)]
+    "container",
+    [sp.PeriodicBox(1.0), sp.Box([1.0, 1.0, 1.2], periodic=[True, True, False]), sp.PeriodicBox(1.0, dim=2)],
 )
 def test_density_profile_integrates_to_density(container):
     p = sp.pack(n=400, density=0.5 if container.dim == 3 else 0.7, container=container, seed=4)
-    z, phi = analysis.density_profile(p, axis=-1, bins=97)
+    _, phi = analysis.density_profile(p, axis=-1, bins=97)
     assert phi.mean() == pytest.approx(p.density, rel=1e-10)
 
 

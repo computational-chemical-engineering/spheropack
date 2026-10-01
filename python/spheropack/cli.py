@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import argparse
-import math
 import sys
 import warnings
+from typing import Literal
 
 import numpy as np
 
@@ -55,8 +55,10 @@ def _cmd_pack(args) -> int:
         radii = np.loadtxt(args.radii_file, ndmin=1)
     else:
         radii = 0.5 * args.diameter
-    density = None if args.density is None else ("max" if args.density == "max" else float(args.density))
-    criteria = []
+    density: float | Literal["max"] | None = None
+    if args.density is not None:
+        density = "max" if args.density == "max" else float(args.density)
+    criteria: list[_stop.Criterion] = []
     if args.jammed_pressure:
         criteria.append(_stop.Jammed(pressure=args.jammed_pressure))
     if args.max_pressure:
@@ -65,8 +67,16 @@ def _cmd_pack(args) -> int:
         criteria.append(_stop.Collisions(per_particle=args.max_collisions))
     if args.timeout:
         criteria.append(_stop.Timeout(args.timeout))
-    p = pack(args.n, radii, container, density=density, growth_rate=args.growth_rate,
-             stop=criteria or None, seed=args.seed, collision_rule=args.collision_rule)
+    p = pack(
+        args.n,
+        radii,
+        container,
+        density=density,
+        growth_rate=args.growth_rate,
+        stop=criteria or None,
+        seed=args.seed,
+        collision_rule=args.collision_rule,
+    )
     print(p, file=sys.stderr)
     _write(p, args.output, args.format, args.periodic_images)
     return 0 if p.success else 1
@@ -87,8 +97,15 @@ def _cmd_legacy_periodic(args) -> int:
     print(f"# legacy growth_rate {args.growth_rate} corresponds to growth_rate Gamma = {gamma:.4g}", file=sys.stderr)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", PackingWarning)
-        p = pack(args.num_part, 0.5 * args.part_diam, Box(lengths, periodic=True), growth_rate=gamma,
-                 seed=args.seed, collision_rule=args.collision_rule, stop=_LEGACY_STOP)
+        p = pack(
+            args.num_part,
+            0.5 * args.part_diam,
+            Box(lengths, periodic=True),
+            growth_rate=gamma,
+            seed=args.seed,
+            collision_rule=args.collision_rule,
+            stop=_LEGACY_STOP,
+        )
     print(p, file=sys.stderr)
     _write(p, args.file, "legacy", args.copy_periodic)
     return 0 if p.success else 1
@@ -100,8 +117,15 @@ def _cmd_legacy_tube(args) -> int:
     print(f"# legacy growth_rate {args.growth_rate} corresponds to growth_rate Gamma = {gamma:.4g}", file=sys.stderr)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", PackingWarning)
-        p = pack(args.num_part, 0.5 * args.part_diam, Cylinder(args.tube_diam, args.tube_length), growth_rate=gamma,
-                 seed=args.seed, collision_rule=args.collision_rule, stop=_LEGACY_STOP)
+        p = pack(
+            args.num_part,
+            0.5 * args.part_diam,
+            Cylinder(args.tube_diam, args.tube_length),
+            growth_rate=gamma,
+            seed=args.seed,
+            collision_rule=args.collision_rule,
+            stop=_LEGACY_STOP,
+        )
     print(p, file=sys.stderr)
     _write(p, args.file, "legacy", False)
     return 0 if p.success else 1
@@ -112,15 +136,22 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--version", action="version", version=f"spheropack {__version__}")
     sub = ap.add_subparsers(dest="command", required=True)
 
-    p = sub.add_parser("pack", help="pack spheres in a box",
-                       description="Pack spheres in a box. Writes x,y,z,r (CSV) to --output or stdout; "
-                                   "a summary goes to stderr. Exit status 1 if the target was not reached.")
+    p = sub.add_parser(
+        "pack",
+        help="pack spheres in a box",
+        description="Pack spheres in a box. Writes x,y,z,r (CSV) to --output or stdout; "
+        "a summary goes to stderr. Exit status 1 if the target was not reached.",
+    )
     p.add_argument("-n", type=int, help="number of spheres (not needed with --radii-file)")
     p.add_argument("--diameter", type=float, default=1.0, help="sphere diameter (default 1)")
     p.add_argument("--radii-file", help="text file with one radius per sphere (polydisperse)")
-    p.add_argument("--container", choices=("box", "cylinder", "sphere"), default="box",
-                   help="box (default; see --box, --walls), cylinder (see --container-diameter, --length, --axis, "
-                        "--capped) or sphere (a disk in 2D)")
+    p.add_argument(
+        "--container",
+        choices=("box", "cylinder", "sphere"),
+        default="box",
+        help="box (default; see --box, --walls), cylinder (see --container-diameter, --length, --axis, "
+        "--capped) or sphere (a disk in 2D)",
+    )
     p.add_argument("--box", help="edge length L, or Lx,Ly[,Lz] (container box)")
     p.add_argument("--container-diameter", dest="diameter_container", type=float, help="cylinder or sphere diameter")
     p.add_argument("--length", type=float, help="cylinder length")
@@ -128,10 +159,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--capped", action="store_true", help="close the cylinder with flat walls (default: periodic)")
     p.add_argument("--dim", type=int, choices=(2, 3), default=3)
     p.add_argument("--walls", help="axes bounded by flat walls, e.g. 'z' or 'xy' (default: fully periodic)")
-    p.add_argument("--density", help="target volume fraction, or 'max' to pack until jammed "
-                                     "(default: grow to the given diameters)")
-    p.add_argument("--growth-rate", type=float, default=0.02,
-                   help="growth speed of the mean diameter / thermal speed (default 0.02)")
+    p.add_argument(
+        "--density", help="target volume fraction, or 'max' to pack until jammed (default: grow to the given diameters)"
+    )
+    p.add_argument(
+        "--growth-rate",
+        type=float,
+        default=0.02,
+        help="growth speed of the mean diameter / thermal speed (default 0.02)",
+    )
     p.add_argument("--seed", type=int)
     p.add_argument("--collision-rule", choices=("elastic_growing", "legacy"), default="elastic_growing")
     p.add_argument("--jammed-pressure", type=float, help="stop: jamming protocol to this median pressure")
@@ -139,14 +175,21 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--max-collisions", type=float, help="stop: collisions per sphere")
     p.add_argument("--timeout", type=float, help="stop: wall-clock seconds")
     p.add_argument("-o", "--output", help="output file (default stdout)")
-    p.add_argument("--format", choices=("csv", "legacy", "plain"), default="csv",
-                   help="csv: x,y,z,r with header; legacy: z,x,y,r without header; plain: x,y,z,r without header")
+    p.add_argument(
+        "--format",
+        choices=("csv", "legacy", "plain"),
+        default="csv",
+        help="csv: x,y,z,r with header; legacy: z,x,y,r without header; plain: x,y,z,r without header",
+    )
     p.add_argument("--periodic-images", action="store_true", help="add images of spheres cut by periodic faces")
     p.set_defaults(func=_cmd_pack)
 
-    q = sub.add_parser("legacy-periodic", help="drop-in replacement of the legacy generate_periodic_packing",
-                       description="Options and output (z,x,y,r) of the legacy generate_periodic_packing tool. "
-                                   "--growth_rate has the legacy meaning (1/time) and is converted.")
+    q = sub.add_parser(
+        "legacy-periodic",
+        help="drop-in replacement of the legacy generate_periodic_packing",
+        description="Options and output (z,x,y,r) of the legacy generate_periodic_packing tool. "
+        "--growth_rate has the legacy meaning (1/time) and is converted.",
+    )
     q.add_argument("--num_part", type=int, required=True)
     q.add_argument("--part_diam", type=float, required=True)
     q.add_argument("--box_size", required=True)
@@ -154,13 +197,20 @@ def build_parser() -> argparse.ArgumentParser:
     q.add_argument("--seed", type=int, default=0)
     q.add_argument("--file")
     q.add_argument("--copy_periodic", action="store_true")
-    q.add_argument("--collision-rule", choices=("legacy", "elastic_growing"), default="legacy",
-                   help="legacy (default) reproduces the old code statistically; elastic_growing never gets stuck")
+    q.add_argument(
+        "--collision-rule",
+        choices=("legacy", "elastic_growing"),
+        default="legacy",
+        help="legacy (default) reproduces the old code statistically; elastic_growing never gets stuck",
+    )
     q.set_defaults(func=_cmd_legacy_periodic)
 
-    t = sub.add_parser("legacy-tube", help="drop-in replacement of the legacy generate_packed_tube",
-                       description="Options and output (z,x,y,r, tube axis first) of the legacy generate_packed_tube "
-                                   "tool. --growth_rate has the legacy meaning (1/time) and is converted.")
+    t = sub.add_parser(
+        "legacy-tube",
+        help="drop-in replacement of the legacy generate_packed_tube",
+        description="Options and output (z,x,y,r, tube axis first) of the legacy generate_packed_tube "
+        "tool. --growth_rate has the legacy meaning (1/time) and is converted.",
+    )
     t.add_argument("--num_part", type=int, required=True)
     t.add_argument("--part_diam", type=float, required=True)
     t.add_argument("--tube_diam", type=float, required=True)
@@ -168,9 +218,13 @@ def build_parser() -> argparse.ArgumentParser:
     t.add_argument("--growth_rate", type=float, default=32e-3)
     t.add_argument("--seed", type=int, default=0)
     t.add_argument("--file")
-    t.add_argument("--collision-rule", choices=("legacy", "elastic_growing"), default="legacy",
-                   help="legacy (default) reproduces the old code statistically; elastic_growing never gets stuck "
-                        "and is faster, with a slightly different wall structure")
+    t.add_argument(
+        "--collision-rule",
+        choices=("legacy", "elastic_growing"),
+        default="legacy",
+        help="legacy (default) reproduces the old code statistically; elastic_growing never gets stuck "
+        "and is faster, with a slightly different wall structure",
+    )
     t.set_defaults(func=_cmd_legacy_tube)
     return ap
 

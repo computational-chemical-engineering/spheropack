@@ -1,4 +1,4 @@
-name: test
+name: CI
 
 on:
   push:
@@ -6,7 +6,29 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  lint:
+    name: lint and types
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pipx run ruff check .
+      - run: pipx run ruff format --check .
+      - name: mypy (against the installed package, which includes the extension stub)
+        run: |
+          python -m pip install . mypy
+          cd /tmp && mypy -p spheropack --config-file "$GITHUB_WORKSPACE/pyproject.toml"
+
   python:
     name: py${{ matrix.python }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -14,14 +36,31 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python: ["3.10", "3.13"]
+        python: ["3.10", "3.12", "3.14"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      - run: python -m pip install .[test]
+      - run: python -m pip install .[test,plot]
       - run: python -m pytest
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install .[test,plot] pytest-cov
+      - name: Python test coverage
+        run: |
+          python -m pytest --cov=spheropack --cov-report=term --cov-report=xml | tee coverage.txt
+          { echo '### Python test coverage'; echo '```'; grep -E "^(Name|TOTAL|.*spheropack)" coverage.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.xml
 
   cpp:
     name: C++ unit tests
@@ -31,3 +70,15 @@ jobs:
       - run: cmake -S . -B build -DSPHEROPACK_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug
       - run: cmake --build build -j
       - run: ctest --test-dir build --output-on-failure
+
+  slow:
+    name: statistical tests (slow)
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install .[test]
+      - run: python -m pytest -m slow

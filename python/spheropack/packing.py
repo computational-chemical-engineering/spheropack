@@ -102,7 +102,7 @@ class Packing:
     def diameters(self) -> np.ndarray:
         return 2.0 * self.radii
 
-    def periodic_images(self, axes=None) -> "Packing":
+    def periodic_images(self, axes=None) -> Packing:
         """Copy with extra periodic images of every sphere that cuts a periodic face.
 
         Useful for visualisation and meshing of the box: every sphere is then

@@ -3,10 +3,10 @@ import warnings
 
 import numpy as np
 import pytest
+from helpers import min_gap_ratio
 
 import spheropack as sp
 from spheropack import _core
-from helpers import min_gap_ratio
 
 INF = float("inf")
 
@@ -68,8 +68,24 @@ def test_fixed_radii_conserve_energy_and_momentum():
     v = rng.normal(size=(300, 3))
     v -= v.mean(axis=0)
     out = _core._ls_pack3(
-        start.radii, [1.0] * 3, [True] * 3, INF, 0.0, INF, INF, 0.0, 100.0, 0, 20.0, INF, 10.0, 0,
-        "elastic_growing", start.positions, 1.0, v,
+        start.radii,
+        [1.0] * 3,
+        [True] * 3,
+        INF,
+        0.0,
+        INF,
+        INF,
+        0.0,
+        100.0,
+        0,
+        20.0,
+        INF,
+        10.0,
+        0,
+        "elastic_growing",
+        start.positions,
+        1.0,
+        v,
     )
     assert out["status"] == "time_limit"
     assert out["n_collisions"] > 50_000
@@ -84,7 +100,9 @@ def test_tiny_box_that_jams_below_target_returns_quickly():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", sp.PackingWarning)
         for seed in range(5):
-            p = sp.pack(n=27, density=0.62, growth_rate=0.16, seed=seed, stop=[sp.stop.Pressure(1e6), sp.stop.Timeout(10)])
+            p = sp.pack(
+                n=27, density=0.62, growth_rate=0.16, seed=seed, stop=[sp.stop.Pressure(1e6), sp.stop.Timeout(10)]
+            )
             assert p.status in ("target", "pressure")
             assert p.wall_time < 10
             assert min_gap_ratio(p.positions, p.radii, [1.0] * 3, [True] * 3) > -1e-12
@@ -156,7 +174,9 @@ def test_collision_budget_is_exact():
 
 def test_strictest_criterion_of_a_type_wins():
     with pytest.warns(sp.PackingWarning):
-        p = sp.pack(n=100, density=0.6, stop=[sp.stop.Collisions(per_particle=50), sp.stop.Collisions(total=1000)], seed=1)
+        p = sp.pack(
+            n=100, density=0.6, stop=[sp.stop.Collisions(per_particle=50), sp.stop.Collisions(total=1000)], seed=1
+        )
     assert p.n_collisions == 1000 and p.stopped_by.total == 1000
 
 
@@ -175,8 +195,13 @@ def test_max_density_needs_an_arrest_criterion():
 
 @pytest.mark.parametrize(
     "bad",
-    [lambda: sp.stop.Pressure(0.5), lambda: sp.stop.Collisions(), lambda: sp.stop.Collisions(total=1, per_particle=1),
-     lambda: sp.stop.Stall(tol=2.0), lambda: sp.stop.Timeout(0)],
+    [
+        lambda: sp.stop.Pressure(0.5),
+        lambda: sp.stop.Collisions(),
+        lambda: sp.stop.Collisions(total=1, per_particle=1),
+        lambda: sp.stop.Stall(tol=2.0),
+        lambda: sp.stop.Timeout(0),
+    ],
 )
 def test_invalid_criteria(bad):
     with pytest.raises(ValueError):

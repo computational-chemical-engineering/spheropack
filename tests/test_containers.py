@@ -5,10 +5,10 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from helpers import min_gap_ratio
 
 import spheropack as sp
 from spheropack import analysis
-from helpers import min_gap_ratio
 
 
 def _ball_gap(p):
@@ -56,11 +56,12 @@ def test_container_volumes():
     assert sp.Disk(2.0).volume == pytest.approx(math.pi)
 
 
-@pytest.mark.parametrize("container", [sp.Cylinder(1.0, 2.0), sp.SphereContainer(1.0), sp.Disk(1.0)], ids=["tube", "sphere", "disk"])
+@pytest.mark.parametrize(
+    "container", [sp.Cylinder(1.0, 2.0), sp.SphereContainer(1.0), sp.Disk(1.0)], ids=["tube", "sphere", "disk"]
+)
 def test_radial_profile_integrates_to_density(container):
     p = sp.pack(n=300, density=0.5 if container.dim == 3 else 0.7, container=container, seed=3)
     r, phi = analysis.radial_profile(p, bins=400)
-    R = container.ball.radius
     m = sum(container.ball.axes)
     weight = r ** (m - 1)  # shell measure ~ r^(m-1) dr
     assert (phi * weight).sum() / weight.sum() == pytest.approx(p.density, rel=2e-3)
@@ -87,8 +88,16 @@ def test_tube_profile_matches_legacy():
     for seed in range(101, 111):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", sp.PackingWarning)  # occasionally stuck just below 0.54
-            p = sp.pack(n=725, radii=0.5 * d, container=sp.Cylinder(D, length), density=0.54, growth_rate=0.16,
-                        seed=seed, collision_rule="legacy", stop=sp.stop.Collisions(per_particle=1e4))
+            p = sp.pack(
+                n=725,
+                radii=0.5 * d,
+                container=sp.Cylinder(D, length),
+                density=0.54,
+                growth_rate=0.16,
+                seed=seed,
+                collision_rule="legacy",
+                stop=sp.stop.Collisions(per_particle=1e4),
+            )
         q = p.positions[:, :2] - 0.5 * D
         rc = np.sqrt((q**2).sum(axis=1))
         h, edges = np.histogram(rc, bins=40, range=(0, 0.5 * D - 0.5 * d))
@@ -122,8 +131,11 @@ def test_ball_radius_must_be_positive():
         sp.Box([1.0, 1.0, 1.0], periodic=False, ball=sp.Ball((True, True, False), (0.5, 0.5, 0.0), -0.5))
 
 
-@pytest.mark.parametrize("container", [sp.Cylinder(1.0, 0.3, capped=True), sp.Box([1.0, 1.0, 0.3], periodic=[True, True, False])],
-                         ids=["short_capped_tube", "thin_slab"])
+@pytest.mark.parametrize(
+    "container",
+    [sp.Cylinder(1.0, 0.3, capped=True), sp.Box([1.0, 1.0, 0.3], periodic=[True, True, False])],
+    ids=["short_capped_tube", "thin_slab"],
+)
 def test_spheres_limited_by_flat_walls_stop(container):
     p = sp.pack(n=3, density="max", container=container, seed=1, stop=[sp.stop.Jammed(), sp.stop.Timeout(10)])
     assert p.status in ("box_limit", "jammed") and p.wall_time < 2

@@ -8,10 +8,9 @@ stopping criteria passed as `stop=` fires. The result reports what happened in
 ```python
 import spheropack as sp
 
-p = sp.pack(n=1000, density=0.6)                       # target density
-q = sp.pack(n=1000, density="max")                      # until jammed
-r = sp.pack(n=1000, density="max",
-            stop=[sp.stop.Jammed(pressure=1e10), sp.stop.Timeout(120)])
+p = sp.pack(n=1000, density=0.6)  # target density
+q = sp.pack(n=1000, density="max")  # until jammed
+r = sp.pack(n=1000, density="max", stop=[sp.stop.Jammed(pressure=1e10), sp.stop.Timeout(120)])
 ```
 
 ## Targets

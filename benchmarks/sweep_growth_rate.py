@@ -33,15 +33,26 @@ def run(task):
 
     system, rate, seed = task
     dim = 2 if system.startswith("2d") else 3
-    p = sp.pack(radii=radii_for(system, seed), container=sp.PeriodicBox(1.0, dim=dim), density="max",
-                growth_rate=rate, seed=seed, stop=[sp.stop.Jammed(), sp.stop.Timeout(3600)])
+    p = sp.pack(
+        radii=radii_for(system, seed),
+        container=sp.PeriodicBox(1.0, dim=dim),
+        density="max",
+        growth_rate=rate,
+        seed=seed,
+        stop=[sp.stop.Jammed(), sp.stop.Timeout(3600)],
+    )
     return dict(
-        system=system, growth_rate=rate, seed=seed, status=p.status, density=p.density,
+        system=system,
+        growth_rate=rate,
+        seed=seed,
+        status=p.status,
+        density=p.density,
         crystalline=float(analysis.crystalline(p).mean()),
         q6_global=analysis.bond_order(p).global_value,
         isostaticity=analysis.isostaticity(p),
         rattlers=float(analysis.rattlers(p).mean()),
-        collisions_per_sphere=p.n_collisions / p.n, wall_time=p.wall_time,
+        collisions_per_sphere=p.n_collisions / p.n,
+        wall_time=p.wall_time,
     )
 
 
@@ -55,8 +66,18 @@ def main():
         runs = list(ex.map(run, tasks))
     import spheropack as sp
 
-    out = dict(meta=dict(version=sp.__version__, n=N, rates=RATES, seeds=SEEDS, systems=SYSTEMS,
-                         stop="Jammed() default", total_wall_time=time.time() - t0), runs=runs)
+    out = dict(
+        meta=dict(
+            version=sp.__version__,
+            n=N,
+            rates=RATES,
+            seeds=SEEDS,
+            systems=SYSTEMS,
+            stop="Jammed() default",
+            total_wall_time=time.time() - t0,
+        ),
+        runs=runs,
+    )
     path = Path(__file__).resolve().parents[1] / "docs" / "data" / "growth_rate_sweep.json"
     path.write_text(json.dumps(out, indent=1))
     print("wrote", path, f"in {time.time() - t0:.0f} s")

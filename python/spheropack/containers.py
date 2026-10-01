@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
 
 import numpy as np
 
@@ -64,7 +64,9 @@ class Box:
             if len(ball.axes) != len(lengths) or len(ball.center) != len(lengths) or not any(ball.axes):
                 raise ValueError("ball axes and centre need one entry per dimension")
             for k, on in enumerate(ball.axes):
-                if on and (periodic[k] or ball.center[k] - ball.radius < 0 or ball.center[k] + ball.radius > lengths[k]):
+                if on and (
+                    periodic[k] or ball.center[k] - ball.radius < 0 or ball.center[k] + ball.radius > lengths[k]
+                ):
                     raise ValueError("the ball must lie inside the box and its axes cannot be periodic")
         object.__setattr__(self, "lengths", lengths)
         object.__setattr__(self, "periodic", periodic)
@@ -80,15 +82,19 @@ class Box:
         if self.ball is None:
             return float(np.prod(self.lengths))
         m = sum(self.ball.axes)
-        rest = float(np.prod([L for L, on in zip(self.lengths, self.ball.axes) if not on]))
-        measure = {1: 2.0 * self.ball.radius, 2: math.pi * self.ball.radius**2, 3: 4.0 / 3.0 * math.pi * self.ball.radius**3}
+        rest = float(np.prod([L for L, on in zip(self.lengths, self.ball.axes, strict=True) if not on]))
+        measure = {
+            1: 2.0 * self.ball.radius,
+            2: math.pi * self.ball.radius**2,
+            3: 4.0 / 3.0 * math.pi * self.ball.radius**3,
+        }
         return rest * measure[m]
 
 
 def PeriodicBox(lengths: float | Sequence[float], dim: int = 3) -> Box:
     """Fully periodic box. A scalar ``lengths`` gives a cube (square for ``dim=2``)."""
-    if np.ndim(lengths) == 0:
-        lengths = [float(lengths)] * dim
+    if isinstance(lengths, (int, float, np.number)):
+        return Box([float(lengths)] * dim, periodic=True)
     return Box(lengths, periodic=True)
 
 
@@ -116,8 +122,11 @@ def SphereContainer(diameter: float, dim: int = 3) -> Box:
     """Spherical container (a disk for ``dim=2``)."""
     if not diameter > 0:
         raise ValueError("diameter must be positive")
-    return Box([float(diameter)] * dim, periodic=False,
-               ball=Ball((True,) * dim, (0.5 * float(diameter),) * dim, 0.5 * float(diameter)))
+    return Box(
+        [float(diameter)] * dim,
+        periodic=False,
+        ball=Ball((True,) * dim, (0.5 * float(diameter),) * dim, 0.5 * float(diameter)),
+    )
 
 
 def Disk(diameter: float) -> Box:

@@ -1,5 +1,12 @@
 # spheropack
 
+[![PyPI](https://img.shields.io/pypi/v/spheropack.svg)](https://pypi.org/project/spheropack/)
+[![Python versions](https://img.shields.io/pypi/pyversions/spheropack.svg)](https://pypi.org/project/spheropack/)
+[![CI](https://github.com/computational-chemical-engineering/spheropack/actions/workflows/test.yml/badge.svg)](https://github.com/computational-chemical-engineering/spheropack/actions/workflows/test.yml)
+[![Docs](https://github.com/computational-chemical-engineering/spheropack/actions/workflows/docs.yml/badge.svg)](https://computational-chemical-engineering.github.io/spheropack)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/computational-chemical-engineering/spheropack/blob/main/LICENSE)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+
 Random sphere packings in Python, generated with the event-driven
 Lubachevsky-Stillinger algorithm: spheres move ballistically, collide and grow until a
 target density is reached or the packing jams or crystallises.
@@ -7,8 +14,8 @@ target density is reached or the packing jams or crystallises.
 ```python
 import spheropack as sp
 
-p = sp.pack(n=1000, density=0.6, seed=1)          # target volume fraction
-q = sp.pack(n=1000, density="max", seed=1)        # until jammed (isostatic within a few %)
+p = sp.pack(n=1000, density=0.6, seed=1)  # target volume fraction
+q = sp.pack(n=1000, density="max", seed=1)  # until jammed (isostatic within a few %)
 q.positions, q.radii, q.density, q.status
 q.to_csv("packing.csv")
 ```
@@ -38,7 +45,10 @@ general potentials*, Phys. Rev. E **85**, 026703 (2012).
 pip install spheropack
 ```
 
-Building from source needs a C++20 compiler and CMake 3.18 or newer: `pip install .`
+Wheels are available for Linux, macOS and Windows (Python 3.10 and newer). Building
+from source needs a C++20 compiler and CMake 3.18 or newer: `pip install .`
+
+Optional extras: `pip install "spheropack[plot]"` for the matplotlib helpers.
 
 ## Documentation
 
@@ -55,6 +65,12 @@ cd docs && sphinx-build -b html . _build/html
 If you use spheropack, please cite it (see
 [CITATION.cff](https://github.com/computational-chemical-engineering/spheropack/blob/main/CITATION.cff)); for the rejection-free
 Monte Carlo method, cite Peters and de With (2012).
+
+## Contributing
+
+See [CONTRIBUTING.md](https://github.com/computational-chemical-engineering/spheropack/blob/main/CONTRIBUTING.md).
+Bug reports and feature requests are welcome as
+[issues](https://github.com/computational-chemical-engineering/spheropack/issues).
 
 ## License
 

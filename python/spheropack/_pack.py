@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import math
 import warnings
-from typing import Iterable, Literal, Sequence
+from collections.abc import Iterable, Sequence
+from typing import Literal
 
 import numpy as np
 
@@ -135,10 +136,10 @@ def pack(
         if not 0.0 < density < 1.0:
             raise ValueError("density must lie between 0 and 1")
         unit = _ball_volume(radii, dim).sum()
-        target_scale = (density * container.volume / unit) ** (1.0 / dim)
+        target_scale = float((density * container.volume / unit) ** (1.0 / dim))
     if target_scale != _INF:
         ball_axes = container.ball.axes if container.ball is not None else (False,) * dim
-        limits = [L for L, on in zip(container.lengths, ball_axes) if not on]  # periodic or flat walls
+        limits = [L for L, on in zip(container.lengths, ball_axes, strict=True) if not on]  # periodic or flat walls
         if container.ball is not None:
             limits.append(2.0 * container.ball.radius)
         if limits and 2.0 * radii.max() * target_scale >= min(limits):
@@ -154,8 +155,11 @@ def pack(
     opts, effective = _stop._engine_options(criteria, len(radii))
 
     if seed is None:
-        seed = int(np.random.SeedSequence().entropy % 2**64)
+        entropy = np.random.SeedSequence().entropy
+        assert isinstance(entropy, int)  # always an int when drawn from the OS
+        seed = entropy % 2**64
 
+    ball = container.ball
     run = _core._ls_pack3 if dim == 3 else _core._ls_pack2
     out = run(
         radii,
@@ -179,8 +183,9 @@ def pack(
         jam_start_pressure=opts["jam_start_pressure"],
         jam_relax_windows=opts["jam_relax_windows"],
         jam_step=opts["jam_step"],
-        **({} if container.ball is None else dict(
-            ball_radius=container.ball.radius, ball_axes=list(container.ball.axes), ball_center=list(container.ball.center))),
+        ball_radius=ball.radius if ball is not None else 0.0,
+        ball_axes=list(ball.axes) if ball is not None else [],
+        ball_center=list(ball.center) if ball is not None else [],
     )
     if out["status"] == "interrupted":
         raise KeyboardInterrupt
@@ -212,7 +217,10 @@ def pack(
         stopped_by=stopped_by,
         success=success,
         sphere_pressure=out["sphere_pressure"],
-        history={**out["history"], "density": _ball_volume(radii, dim).sum() * out["history"]["scale"] ** dim / container.volume},
+        history={
+            **out["history"],
+            "density": _ball_volume(radii, dim).sum() * out["history"]["scale"] ** dim / container.volume,
+        },
         max_contact_error=out["max_contact_error"],
         _velocities=out["velocities"],
     )

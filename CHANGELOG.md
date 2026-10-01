@@ -21,3 +21,5 @@ as a header-only C++20 core with a Python interface.
 - Command line: `spheropack pack`, and `legacy-periodic` and `legacy-tube` as drop-in
   replacements of the legacy tools.
 - Documentation: user guide, four example notebooks, Python and C++ API reference.
+- Typed package (`py.typed`, generated stub for the C++ extension); wheels for Linux,
+  macOS and Windows, Python 3.10 and newer.

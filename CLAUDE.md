@@ -15,6 +15,8 @@ python -m venv .venv && .venv/bin/pip install nanobind scikit-build-core numpy p
 cmake -S . -B build/cpp -G Ninja -DSPHEROPACK_BUILD_TESTS=ON && cmake --build build/cpp && ./build/cpp/tests/cpp/spheropack_tests   # C++ (doctest)
 ```
 
+Lint and types: `ruff check . && ruff format --check .`; mypy runs against an installed (non-editable) package because the editable install hides the extension stub: `pip install . mypy && cd /tmp && mypy -p spheropack --config-file <repo>/pyproject.toml`. Docs: `cd docs && sphinx-build -W -b html . _build/html` (warnings are errors in CI).
+
 The editable install does not rebuild automatically; rerun the pip install line after editing anything in `include/` or `src/`.
 
 ## Architecture
