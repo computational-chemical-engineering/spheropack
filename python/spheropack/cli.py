@@ -19,7 +19,27 @@ def _floats(text: str) -> list[float]:
     return [float(x) for x in text.split(",")]
 
 
+_WRITERS = {
+    "xyz": "to_xyz",
+    "lammps": "to_lammps_dump",
+    "lammps-data": "to_lammps_data",
+    "vtp": "to_vtp",
+    "stl": "to_stl",
+    "pov": "to_pov",
+    "npz": "save",
+}
+
+
 def _write(p, path, fmt, images):
+    if fmt in _WRITERS:
+        if path in (None, "-"):
+            raise SystemExit(f"--format {fmt} needs --output")
+        method = getattr(p, _WRITERS[fmt])
+        if fmt in ("lammps-data", "npz"):
+            method(path)
+        else:
+            method(path, periodic_images=images)
+        return
     if images:
         p = p.periodic_images()
     if path in (None, "-"):
@@ -177,9 +197,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("-o", "--output", help="output file (default stdout)")
     p.add_argument(
         "--format",
-        choices=("csv", "legacy", "plain"),
+        choices=("csv", "legacy", "plain", *_WRITERS),
         default="csv",
-        help="csv: x,y,z,r with header; legacy: z,x,y,r without header; plain: x,y,z,r without header",
+        help="csv: x,y,z,r with header; legacy: z,x,y,r without header; plain: x,y,z,r without header; "
+        "xyz (OVITO/ASE), lammps (dump), lammps-data, vtp (ParaView), stl, pov, npz",
     )
     p.add_argument("--periodic-images", action="store_true", help="add images of spheres cut by periodic faces")
     p.set_defaults(func=_cmd_pack)

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Output formats (`spheropack.io`, methods on `Packing`, CLI `--format`): extended XYZ
+  (OVITO, ASE), LAMMPS dump and data file (atom_style sphere), VTK PolyData and
+  container outlines (ParaView), binary STL meshes, POV-Ray scenes, and `.npz` save
+  and `spheropack.load` for an exact round trip.
+
 ## 0.1.0 (2026-10-01)
 
 First release. A rewrite of the legacy event-driven Lubachevsky-Stillinger packing code

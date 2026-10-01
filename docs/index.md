@@ -19,6 +19,7 @@ installation
 guide/algorithm
 guide/growth_rate
 guide/stopping
+guide/output
 cli
 ```
 

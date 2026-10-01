@@ -125,6 +125,50 @@ class Packing:
         out._velocities = None
         return out
 
+    # Export: thin wrappers around spheropack.io (see there for the formats).
+
+    def to_xyz(self, path, **kwargs) -> None:
+        """Extended XYZ for OVITO and ASE; see :func:`spheropack.io.write_xyz`."""
+        from . import io
+
+        io.write_xyz(self, path, **kwargs)
+
+    def to_lammps_dump(self, path, **kwargs) -> None:
+        """LAMMPS dump for OVITO and LAMMPS; see :func:`spheropack.io.write_lammps_dump`."""
+        from . import io
+
+        io.write_lammps_dump(self, path, **kwargs)
+
+    def to_lammps_data(self, path, **kwargs) -> None:
+        """LAMMPS data file (atom_style sphere); see :func:`spheropack.io.write_lammps_data`."""
+        from . import io
+
+        io.write_lammps_data(self, path, **kwargs)
+
+    def to_vtp(self, path, **kwargs) -> None:
+        """VTK XML PolyData for ParaView; see :func:`spheropack.io.write_vtp`."""
+        from . import io
+
+        io.write_vtp(self, path, **kwargs)
+
+    def to_stl(self, path, **kwargs) -> None:
+        """Binary STL surface mesh of the spheres; see :func:`spheropack.io.write_stl`."""
+        from . import io
+
+        io.write_stl(self, path, **kwargs)
+
+    def to_pov(self, path, **kwargs) -> None:
+        """POV-Ray scene; see :func:`spheropack.io.write_pov`."""
+        from . import io
+
+        io.write_pov(self, path, **kwargs)
+
+    def save(self, path) -> None:
+        """Saves the packing to ``.npz``; read it back with :func:`spheropack.load`."""
+        from . import io
+
+        io.save(self, path)
+
     def to_csv(self, path: str | Path, *, legacy_order: bool = False, header: bool = True) -> None:
         """Writes one sphere per line as ``x,y,z,r`` (``x,y,r`` in 2D).
 
