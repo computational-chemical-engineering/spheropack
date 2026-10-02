@@ -55,6 +55,28 @@ Potentials: {func}`~spheropack.rejection_free.LennardJones` (truncated and shift
 at least twice the cutoff. For strongly repulsive potentials start from a packing,
 `rf.System(sp.pack(...).positions, box=..., ...)`, rather than from random positions.
 
+## Event chains
+
+The paper's second implementation moves one particle at a time
+(`rf.System(..., method="event_chain")`). The active particle moves along a coordinate
+axis; for every pair with it the uphill part of the potential along the path is
+accumulated as above, and at a reflection the active particle stops and the partner
+moves on in the same direction (a *lift*). A chain ends after a displacement
+`chain_length`, and the next chain starts at a random particle. No event queue is
+needed, which makes this variant much faster per unit of displacement.
+
+By default the chains are *irreversible*: the direction cycles through $+x, +y, +z$.
+This breaks detailed balance but satisfies global balance, so the canonical
+distribution is still sampled, and the motion is ballistic rather than diffusive,
+which speeds up the decorrelation considerably. With `irreversible=False` every chain
+gets a random axis and sign (detailed balance). Near the critical point, as in the
+Lennard-Jones example of the paper, the reversible chains equilibrate the long-range
+density fluctuations slowly; use the default there.
+
+In both methods `run(t)` moves every particle by `t` on average (the event-chain
+method performs chains with a total displacement $N t$), so sampling intervals are
+comparable.
+
 ## Validation
 
 - **Two particles.** The distance distribution of two particles in a periodic box
@@ -63,10 +85,12 @@ at least twice the cutoff. For strongly repulsive potentials start from a packin
   temperature would be detected.
 - **Lennard-Jones fluid** at $\rho = 0.317$, $T = 1.085$, $r_c = 2.5\sigma$ (the state
   point of the paper): $g(r)$ agrees with the paper's long Metropolis runs within
-  0.002 on average (see the notebook).
+  0.002 on average for both methods (see the notebook).
+- **Methods against each other** at $T = 2$: the mean potential energy per particle of
+  the collision method and of irreversible and reversible event chains agree within
+  about two standard errors (0.1%).
 - **DPD liquid** at $\rho = 3$, $a = 25\,kT$: $g(r)$ agrees with the paper's data.
 
 ## Not (yet) included
 
-The straight event-chain variant of the paper (one particle moves at a time) and
-potentials with several minima or tabulated potentials.
+Potentials with several minima, tabulated potentials, and containers with walls.

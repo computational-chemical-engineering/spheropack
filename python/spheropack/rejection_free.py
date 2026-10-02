@@ -23,7 +23,7 @@ from __future__ import annotations
 import math
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Any, Literal
 
 import numpy as np
 
@@ -119,6 +119,20 @@ class System:
         Random seed. ``None`` draws one.
     dim:
         Dimension when neither positions nor box are given.
+    method:
+        ``"collisions"`` (default): all particles move simultaneously and pairs reflect
+        (the first implementation of the paper). ``"event_chain"``: one particle moves at
+        a time along a coordinate axis and passes its motion to the partner at a
+        reflection (the straight event-chain variant), usually faster for dense systems.
+    chain_length:
+        Displacement per chain (``event_chain`` only).
+    irreversible:
+        ``event_chain`` only: cycle the directions +x, +y, +z (default, faster; global
+        balance) instead of random axes and signs (detailed balance).
+
+    Time is measured as the mean displacement per particle in both methods: ``run(t)``
+    moves every particle along its path for ``t`` (collisions) or performs chains with
+    a total displacement ``n * t`` (event chain).
     """
 
     def __init__(
@@ -132,6 +146,9 @@ class System:
         kT: float = 1.0,
         seed: int | None = None,
         dim: int = 3,
+        method: Literal["collisions", "event_chain"] = "collisions",
+        chain_length: float = 1.0,
+        irreversible: bool = True,
     ):
         if seed is None:
             entropy = np.random.SeedSequence().entropy
@@ -157,13 +174,26 @@ class System:
         self.box = box
         self.potential = potential
         self.kT = float(kT)
-        cls = _core._RejectionFree3 if box.dim == 3 else _core._RejectionFree2
         p = potential
-        self._sim = cls(positions, list(box.lengths), p.kind, p.epsilon, p.sigma, p.cutoff, p.alpha, self.kT, self.seed)
+        args = (positions, list(box.lengths), p.kind, p.epsilon, p.sigma, p.cutoff, p.alpha, self.kT, self.seed)
+        self._sim: Any  # _RejectionFree2/3 or _EventChain2/3
+        if method == "collisions":
+            cls = _core._RejectionFree3 if box.dim == 3 else _core._RejectionFree2
+            self._sim = cls(*args)
+        elif method == "event_chain":
+            if not chain_length > 0:
+                raise ValueError("chain_length must be positive")
+            ec = _core._EventChain3 if box.dim == 3 else _core._EventChain2
+            self._sim = ec(*args, irreversible)
+        else:
+            raise ValueError("method must be 'collisions' or 'event_chain'")
+        self.method = method
+        self.chain_length = float(chain_length)
+        self._n = len(positions)
 
     @property
     def n(self) -> int:
-        return len(self.positions)
+        return self._n
 
     @property
     def dim(self) -> int:
@@ -181,30 +211,41 @@ class System:
 
     @property
     def velocities(self) -> np.ndarray:
-        """Current move velocities (a copy)."""
+        """Current move velocities (a copy); ``collisions`` method only."""
+        if self.method != "collisions":
+            raise AttributeError("the event-chain method has no velocities")
         return self._sim.velocities()
 
     @property
     def time(self) -> float:
-        """Simulation time (contour length of the moves) since the start."""
-        return self._sim.time
+        """Simulation time since the start: the mean displacement per particle."""
+        return self._sim.time if self.method == "collisions" else self._sim.displacement / self._n
 
     @property
     def n_reflections(self) -> int:
-        return self._sim.n_reflections
+        """Number of reflections (lifts in the event-chain method)."""
+        return self._sim.n_reflections if self.method == "collisions" else self._sim.n_lifts
 
     def run(self, time: float) -> System:
         """Advances the simulation by ``time``. Ctrl-C stops it and raises ``KeyboardInterrupt``."""
-        if self._sim.run(float(time)):
+        if self.method == "collisions":
+            interrupted = self._sim.run(float(time))
+        else:
+            interrupted = self._sim.run(float(time) * self._n, self.chain_length)
+        if interrupted:
             raise KeyboardInterrupt
         return self
 
     def set_velocities(self, velocities: np.ndarray) -> None:
-        """Sets the move velocities, shape ``(n, dim)``."""
+        """Sets the move velocities, shape ``(n, dim)``; ``collisions`` method only."""
+        if self.method != "collisions":
+            raise AttributeError("the event-chain method has no velocities")
         self._sim.set_velocities(np.ascontiguousarray(velocities, dtype=float))
 
     def redraw_velocities(self) -> None:
-        """Draws new move velocities from a standard normal distribution."""
+        """Draws new move velocities (standard normal); ``collisions`` method only."""
+        if self.method != "collisions":
+            raise AttributeError("the event-chain method has no velocities")
         self._sim.redraw_velocities()
 
     def potential_energy(self) -> float:
@@ -218,7 +259,7 @@ class System:
         """
         for _ in range(n_samples):
             self.run(interval)
-            if redraw_velocities:
+            if redraw_velocities and self.method == "collisions":
                 self.redraw_velocities()
             yield self.positions
 
@@ -248,7 +289,7 @@ class System:
     def __repr__(self) -> str:
         return (
             f"System(n={self.n}, dim={self.dim}, density={self.density:.4g}, potential={self.potential.name}, "
-            f"kT={self.kT:g}, time={self.time:.4g}, n_reflections={self.n_reflections})"
+            f"kT={self.kT:g}, method={self.method!r}, time={self.time:.4g}, n_reflections={self.n_reflections})"
         )
 
 

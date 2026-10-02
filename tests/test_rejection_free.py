@@ -27,11 +27,11 @@ def test_potential_values():
     assert np.isinf(POTENTIALS["hard"]([0.99])[0]) and POTENTIALS["hard"]([1.01])[0] == 0
 
 
-def _two_particle_chi2(potential, dim, kT, seed, n_samples=20000, interval=3.0, L=5.0, bins=40):
+def _two_particle_chi2(potential, dim, kT, seed, n_samples=20000, interval=3.0, L=5.0, bins=40, **method):
     box = sp.PeriodicBox(L, dim=dim)
     x0 = np.full((2, dim), 1.0)
     x0[1, 0] += 1.5
-    s = rf.System(x0, box=box, potential=potential, kT=kT, seed=seed)
+    s = rf.System(x0, box=box, potential=potential, kT=kT, seed=seed, **method)
     r = []
     for x in s.samples(n_samples, interval):
         d = x[1] - x[0]
@@ -100,7 +100,7 @@ def test_invalid_box():
         rf.System(n=10, box=sp.PeriodicBox(4.0), potential=POTENTIALS["lj"])  # shorter than 2 rc
 
 
-def _bound_fraction(potential, kT, r_b, dim=3, L=5.0, n_samples=30000, interval=2.0, seed=11):
+def _bound_fraction(potential, kT, r_b, dim=3, L=5.0, n_samples=30000, interval=2.0, seed=11, **method):
     """Measured and exact P(r < r_b | r < L/2) for two particles, with a batch-means error."""
     s = rf.System(
         np.array([[1.0] * dim, [2.5] + [1.0] * (dim - 1)]),
@@ -108,6 +108,7 @@ def _bound_fraction(potential, kT, r_b, dim=3, L=5.0, n_samples=30000, interval=
         potential=potential,
         kT=kT,
         seed=seed,
+        **method,
     )
     r = []
     for x in s.samples(n_samples, interval):
@@ -213,3 +214,54 @@ def test_invalid_inputs():
         s.run(float("nan"))
     with pytest.raises(ValueError):
         rf.radial_distribution(s, n_samples=0, interval=1.0)
+
+
+EVENT_CHAIN = {
+    "irreversible": {"method": "event_chain", "chain_length": 1.0},
+    "reversible": {"method": "event_chain", "chain_length": 1.0, "irreversible": False},
+}
+
+
+@pytest.mark.parametrize("variant", list(EVENT_CHAIN))
+@pytest.mark.parametrize("name", ["lj", "dpd", "hard"])
+@pytest.mark.parametrize("dim", [3, 2])
+def test_event_chain_two_particles_sample_boltzmann(variant, name, dim):
+    chi2, dof = _two_particle_chi2(POTENTIALS[name], dim, kT=1.0, seed=3, **EVENT_CHAIN[variant])
+    assert chi2 < dof + 6 * math.sqrt(2 * dof), (chi2, dof)
+
+
+@pytest.mark.parametrize("variant", list(EVENT_CHAIN))
+def test_event_chain_bound_fraction(variant):
+    measured, se, exact = _bound_fraction(
+        rf.LennardJones(cutoff=2.5), 0.5, 1.5, L=5.0, n_samples=150_000, interval=1.0, **EVENT_CHAIN[variant]
+    )
+    assert abs(measured - exact(0.5)) < 4 * se, (measured, exact(0.5), se)
+    assert abs(exact(0.4) - measured) > 4 * se or abs(exact(0.6) - measured) > 4 * se
+
+
+def test_event_chain_has_no_velocities_and_counts_time():
+    s = rf.System(n=50, density=0.2, potential=rf.WCA(), seed=1, method="event_chain")
+    s.run(3.0)
+    assert s.time == pytest.approx(3.0)
+    with pytest.raises(AttributeError):
+        s.velocities
+    with pytest.raises(AttributeError):
+        s.redraw_velocities()
+    assert np.all((s.positions >= 0) & (s.positions < np.asarray(s.box.lengths)))
+    with pytest.raises(ValueError):
+        rf.System(n=50, density=0.2, potential=rf.WCA(), method="nonsense")
+
+
+@pytest.mark.slow
+def test_event_chain_lennard_jones_matches_paper():
+    ref = np.loadtxt(REFERENCE / "GofR_LJ_all.dat")
+    n, rho, T = 1000, 0.317, 1.085
+    start = sp.pack(n=n, radii=0.45, container=sp.PeriodicBox((n / rho) ** (1 / 3)), seed=4)
+    s = rf.System(
+        start.positions, box=start.container, potential=rf.LennardJones(cutoff=2.5), kT=T, seed=4, method="event_chain"
+    )
+    s.run(100.0)
+    g = rf.radial_distribution(s, n_samples=300, interval=1.0, r_max=5.0, bins=1000)
+    metropolis = ref[:, [1, 3, 5]].mean(axis=1)
+    coarse = lambda a: a.reshape(100, 10).mean(axis=1)
+    assert np.abs(coarse(g.g) - coarse(metropolis)).mean() < 0.006

@@ -79,8 +79,10 @@ rejection-free Monte Carlo method of Peters & de With, Phys. Rev. E 85, 026703
   extension (nanobind NOMINSIZE), cell-sorted storage, crossing re-prediction over the
   new cell layer only, geometric pre-checks in the rejection-free prediction, cells of
   half the cutoff with a 5^D stencil for the rejection-free engine, cheaper pair hash.
-- Next: release 0.2.0 (after user approval); event-chain variant of the
-  rejection-free method; further performance (the stencil loop over mostly empty cells now costs
+- Event-chain variant of the rejection-free method (`method="event_chain"`,
+  irreversible or reversible); at T = 2 all methods agree with an independent
+  Metropolis run on U/N within 0.05%.
+- Next: release 0.2.0 (after user approval); further performance (the stencil loop over mostly empty cells now costs
   about a quarter of the rejection-free time; precomputed cell neighbour lists would
   remove it).
 

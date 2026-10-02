@@ -164,6 +164,22 @@ inline double reflection_time(double r2, double b, double u2, double du, const P
   return std::max(0.0, time_at(pot.outer_radius(u_from + du), true));
 }
 
+/// @brief Whether a straight relative path has any uphill part for `pot` (a cheap
+/// necessary condition for reflection_time() to be finite).
+/// @param r2 \f$|\mathbf r_0|^2\f$
+/// @param b \f$\mathbf r_0 \cdot \mathbf u\f$
+/// @param u2 \f$|\mathbf u|^2\f$
+/// @param pot the pair potential
+inline bool may_reflect(double r2, double b, double u2, const PairPotential& pot) noexcept {
+  if (!(u2 > 0.0)) return false;
+  const double rc2 = pot.cutoff * pot.cutoff, rm2 = pot.r_min() * pot.r_min();
+  const bool attractive = pot.r_min() < pot.cutoff;
+  if (b >= 0.0) return attractive && r2 < rc2;  // outward: attractive branch only
+  const double close2 = r2 - b * b / u2;
+  if (close2 < rm2) return true;         // reaches the repulsive branch
+  return attractive && close2 < rc2;     // outward leg after the closest approach
+}
+
 /// Run statistics of a rejection-free simulation.
 struct RejectionFreeStats {
   double time = 0.0;               ///< simulation time ("contour length" of the moves)
@@ -234,6 +250,7 @@ class RejectionFreeMC {
   const RejectionFreeStats& run(double duration, const std::function<bool()>& interrupted = {}) {
     if (!(duration >= 0.0) || !std::isfinite(duration))
       throw std::invalid_argument("duration must be finite and non-negative");
+    stats_.interrupted = false;
     const auto t_start = std::chrono::steady_clock::now();
     if (!ready_) prepare_events();
     double t_end = now_ + duration;
@@ -384,16 +401,6 @@ class RejectionFreeMC {
     return 1.0 - to_unit_interval(h);
   }
 
-  // Whether the straight segment has any uphill part (a cheap necessary condition).
-  bool may_reflect(double r2, double b, double u2) const noexcept {
-    if (!(u2 > 0.0)) return false;
-    const double rc2 = pot_.cutoff * pot_.cutoff, rm2 = pot_.r_min() * pot_.r_min();
-    if (b >= 0.0) return pot_.r_min() < pot_.cutoff && r2 < rc2;  // outward: attractive branch only
-    const double close2 = r2 - b * b / u2;
-    if (close2 < rm2) return true;                     // reaches the repulsive branch
-    return pot_.r_min() < pot_.cutoff && close2 < rc2;  // outward leg after closest approach
-  }
-
   double predict(std::uint32_t i) {
     Event best;
     double t_best = never;
@@ -434,7 +441,7 @@ class RejectionFreeMC {
       u[k] = pj.v[k] - pi.v[k];
     }
     const double r2 = norm2<D>(r), b = dot<D>(r, u), u2 = norm2<D>(u);
-    if (!may_reflect(r2, b, u2)) return;  // no uphill part on this segment: skip the random number
+    if (!may_reflect(r2, b, u2, pot_)) return;  // no uphill part on this segment: skip the random number
     std::array<std::int32_t, D> image;
     for (int k = 0; k < D; ++k) image[k] = shift[k] - pj.img[k] + pi.img[k];
     const double du = -kT_ * std::log(pair_uniform(i, j, image));
@@ -553,6 +560,185 @@ class RejectionFreeMC {
   std::uint64_t since_sync_ = 0;
   bool ready_ = false;
   bool full_rescan_ = false;
+};
+
+/// Run statistics of an event-chain simulation.
+struct EventChainStats {
+  double displacement = 0.0;  ///< total displacement of all chains
+  std::uint64_t n_lifts = 0;  ///< number of lifts (the motion passed to another particle)
+  std::uint64_t n_chains = 0;  ///< number of chains
+  double wall_time = 0.0;      ///< wall-clock seconds spent in run()
+  bool interrupted = false;    ///< the last run() was stopped by the interrupt callback
+};
+
+/// @brief Straight event-chain variant of the rejection-free method (Peters and de With
+/// 2012, section "straight event-chain collision"; Bernard, Krauth and Wilson 2009 for
+/// hard spheres).
+///
+/// One particle moves at a time, along a coordinate axis. For every pair with the moving
+/// particle the uphill part of the pair potential along the path is accumulated; at a
+/// reflection the moving particle stops and the partner continues with the same
+/// displacement direction (a lift). A chain ends after a total displacement
+/// `chain_length`; the next chain starts at a random particle. In the irreversible mode
+/// (the default) the direction cycles through +x, +y, +z; this breaks detailed balance
+/// but satisfies global balance, so the canonical distribution is sampled. In the
+/// reversible mode each chain gets a random axis and sign.
+/// @tparam D dimension (2 or 3)
+template <int D>
+class EventChainMC {
+ public:
+  /// @brief Set up particles at the given positions.
+  /// @param box periodic box (all axes periodic), edges at least twice the cutoff
+  /// @param positions initial positions
+  /// @param potential pair potential (prepared here)
+  /// @param kT temperature in energy units
+  /// @param seed random seed
+  /// @param irreversible cycle the directions +x, +y, +z (true) or draw random axes and signs
+  EventChainMC(const Box<D>& box, const std::vector<Vec<D>>& positions, PairPotential potential, double kT,
+               std::uint64_t seed, bool irreversible = true)
+      : box_(box), pot_(potential), kT_(kT), rng_(seed), irreversible_(irreversible) {
+    box_.validate();
+    for (int k = 0; k < D; ++k)
+      if (!box_.periodic[k]) throw std::invalid_argument("event-chain MC needs a fully periodic box");
+    if (box_.ball.active) throw std::invalid_argument("event-chain MC needs a box without curved wall");
+    if (!(kT > 0.0)) throw std::invalid_argument("kT must be positive");
+    if (positions.empty()) throw std::invalid_argument("at least one particle is required");
+    pot_.prepare();
+    for (int k = 0; k < D; ++k)
+      if (box_.L[k] < 2.0 * pot_.cutoff) throw std::invalid_argument("box edges must be at least twice the cutoff");
+    x_ = positions;
+    for (auto& xi : x_) wrap(xi);
+    grid_.build(box_, 0.5 * pot_.cutoff, 8 * x_.size() + 125, 2);
+    grid_.clear_particles(x_.size());
+    for (std::uint32_t i = 0; i < x_.size(); ++i) grid_.insert(i, grid_.flat(grid_.coords_of(x_[i])));
+  }
+
+  /// @brief Run chains until the total displacement reaches `displacement`.
+  /// @param displacement total displacement of all chains together
+  /// @param chain_length displacement per chain
+  /// @param interrupted polled regularly; returning true stops the run early
+  /// @return the accumulated statistics
+  const EventChainStats& run(double displacement, double chain_length, const std::function<bool()>& interrupted = {}) {
+    if (!(displacement >= 0.0) || !std::isfinite(displacement) || !(chain_length > 0.0))
+      throw std::invalid_argument("displacement must be non-negative and chain_length positive");
+    stats_.interrupted = false;
+    const auto t_start = std::chrono::steady_clock::now();
+    double left = displacement;
+    std::uint64_t polled_at = stats_.n_lifts + stats_.n_chains;
+    while (left > 0.0) {
+      // Poll the interrupt about every 65536 lifts or chains, whichever comes first.
+      if (stats_.n_lifts + stats_.n_chains - polled_at > 0xffff) {
+        polled_at = stats_.n_lifts + stats_.n_chains;
+        if (interrupted && interrupted()) {
+          stats_.interrupted = true;
+          break;
+        }
+      }
+      const double ell = std::min(chain_length, left);
+      chain(ell);
+      left -= ell;
+      stats_.displacement += ell;
+      ++stats_.n_chains;
+    }
+    stats_.wall_time += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_start).count();
+    return stats_;
+  }
+
+  /// @return current positions, wrapped into the box
+  std::vector<Vec<D>> positions() const {
+    std::vector<Vec<D>> x = x_;
+    for (auto& xi : x) wrap(xi);  // a particle can sit exactly on the upper face after a crossing
+    return x;
+  }
+
+  /// @return total potential energy
+  double potential_energy() const {
+    double u = 0.0;
+    for_each_pair<D>(x_, box_, pot_.cutoff, [&](std::uint32_t, std::uint32_t, const Vec<D>& r) {
+      u += pot_.value(std::sqrt(norm2<D>(r)));
+    });
+    return u;
+  }
+
+  /// @return the accumulated statistics
+  const EventChainStats& stats() const noexcept { return stats_; }
+
+ private:
+  void wrap(Vec<D>& x) const noexcept {
+    for (int k = 0; k < D; ++k) {
+      x[k] -= std::floor(x[k] / box_.L[k]) * box_.L[k];
+      if (x[k] >= box_.L[k]) x[k] -= box_.L[k];
+    }
+  }
+
+  // One chain of total displacement `ell`.
+  void chain(double ell) {
+    int axis;
+    int sign = 1;
+    if (irreversible_) {
+      axis = next_axis_;
+      next_axis_ = (next_axis_ + 1) % D;
+    } else {
+      axis = static_cast<int>(rng_.uniform() * D);
+      sign = rng_.uniform() < 0.5 ? -1 : 1;
+    }
+    auto i = static_cast<std::uint32_t>(rng_.uniform() * static_cast<double>(x_.size()));
+    while (ell > 0.0) {
+      // Distance to the next cell face along the move, which bounds the step so that the
+      // neighbour scan stays valid.
+      const auto c = grid_.coords(grid_.cell_of(i));
+      const double face = sign > 0 ? (c[axis] + 1) * grid_.width(axis) : c[axis] * grid_.width(axis);
+      const double s_face = std::max(0.0, sign * (face - x_[i][axis]));
+      double s_best = std::min(ell, s_face);
+      std::uint32_t lift = std::numeric_limits<std::uint32_t>::max();
+      grid_.for_each_neighbor(grid_.cell_of(i), [&](std::uint32_t j, const std::array<int, D>& shift) {
+        if (j == i) return;
+        Vec<D> r;
+        for (int k = 0; k < D; ++k) r[k] = x_[j][k] + shift[k] * box_.L[k] - x_[i][k];
+        const double r2 = norm2<D>(r);
+        const double b = -sign * r[axis];  // relative velocity of j seen from i: -e
+        if (!may_reflect(r2, b, 1.0, pot_)) return;
+        const double tau = reflection_time(r2, b, 1.0, kT_ * rng_.exponential(), pot_);
+        if (tau < s_best) {
+          s_best = tau;
+          lift = j;
+        }
+      });
+      x_[i][axis] += sign * s_best;
+      ell -= s_best;
+      if (lift != std::numeric_limits<std::uint32_t>::max()) {
+        i = lift;
+        ++stats_.n_lifts;
+        continue;
+      }
+      if (s_best == s_face && ell > 0.0) {  // into the next cell, wrapping at the box face
+        auto nc = c;
+        nc[axis] += sign;
+        if (nc[axis] < 0) {
+          nc[axis] = grid_.n(axis) - 1;
+          x_[i][axis] += box_.L[axis];
+        } else if (nc[axis] >= grid_.n(axis)) {
+          nc[axis] = 0;
+          x_[i][axis] -= box_.L[axis];
+        }
+        grid_.move(i, grid_.flat(nc));
+      } else {
+        wrap(x_[i]);
+        const auto cell = grid_.flat(grid_.coords_of(x_[i]));
+        if (cell != grid_.cell_of(i)) grid_.move(i, cell);
+      }
+    }
+  }
+
+  Box<D> box_;
+  PairPotential pot_;
+  double kT_;
+  Rng rng_;
+  bool irreversible_;
+  int next_axis_ = 0;
+  std::vector<Vec<D>> x_;
+  CellGrid<D> grid_;
+  EventChainStats stats_;
 };
 
 }  // namespace spheropack

@@ -6,7 +6,9 @@
   de With, Phys. Rev. E 85, 026703 (2012): `System`, potentials `LennardJones`, `WCA`,
   `DPD`, `SoftSpheres`, `HardSpheres`, `radial_distribution`. Validated against exact
   two-particle distributions and the data of the paper; notebook reproducing its
-  Lennard-Jones case.
+  Lennard-Jones case. Both implementations of the paper: all particles moving
+  (`method="collisions"`) and straight event chains (`method="event_chain"`,
+  irreversible or reversible).
 - Performance: packing about 1.5 times faster than 0.1.0 (extension no longer
   optimised for size, cell-sorted particle storage, cheaper re-prediction after cell
   crossings); the rejection-free engine uses cells of half the cutoff with a 5^D

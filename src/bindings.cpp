@@ -258,6 +258,46 @@ void def_rejection_free(nb::module_& m, const char* name) {
       .def_prop_ro("wall_time", [](const Sim& s) { return s.stats().wall_time; });
 }
 
+template <int D>
+void def_event_chain(nb::module_& m, const char* name) {
+  using Sim = spheropack::EventChainMC<D>;
+  nb::class_<Sim>(m, name)
+      .def("__init__",
+           [](Sim* self, InArray2 positions, std::vector<double> lengths, const std::string& kind, double epsilon,
+              double sigma, double cutoff, double alpha, double kT, std::uint64_t seed, bool irreversible) {
+             if (lengths.size() != D) throw nb::value_error("box lengths need one entry per dimension");
+             spheropack::Box<D> box;
+             for (int k = 0; k < D; ++k) {
+               box.L[k] = lengths[k];
+               box.periodic[k] = true;
+             }
+             new (self) Sim(box, numpy_to_points<D>(positions, positions.shape(0), "positions"),
+                            make_potential(kind, epsilon, sigma, cutoff, alpha), kT, seed, irreversible);
+           },
+           "positions"_a, "lengths"_a, "kind"_a, "epsilon"_a, "sigma"_a, "cutoff"_a, "alpha"_a, "kT"_a, "seed"_a,
+           "irreversible"_a)
+      .def("run",
+           [](Sim& self, double displacement, double chain_length) {
+             nb::gil_scoped_release release;
+             self.run(displacement, chain_length, [] {
+               nb::gil_scoped_acquire acquire;
+               if (PyErr_CheckSignals() != 0) {
+                 PyErr_Clear();
+                 return true;
+               }
+               return false;
+             });
+             return self.stats().interrupted;
+           },
+           "displacement"_a, "chain_length"_a)
+      .def("positions", [](const Sim& self) { return points_to_numpy<D>(self.positions()); })
+      .def("potential_energy", &Sim::potential_energy)
+      .def_prop_ro("displacement", [](const Sim& s) { return s.stats().displacement; })
+      .def_prop_ro("n_lifts", [](const Sim& s) { return s.stats().n_lifts; })
+      .def_prop_ro("n_chains", [](const Sim& s) { return s.stats().n_chains; })
+      .def_prop_ro("wall_time", [](const Sim& s) { return s.stats().wall_time; });
+}
+
 // Draws `n` variates of the given kind from a fresh generator; used to test the
 // generator from Python and to check reproducibility across platforms.
 OutArray rng_sample(std::uint64_t seed, std::size_t n, const std::string& kind) {
@@ -298,6 +338,8 @@ NB_MODULE(_core, m) {
   m.def("_neighbor_pairs3", &neighbor_pairs<3>, "positions"_a, "lengths"_a, "periodic"_a, "cutoff"_a);
   def_rejection_free<2>(m, "_RejectionFree2");
   def_rejection_free<3>(m, "_RejectionFree3");
+  def_event_chain<2>(m, "_EventChain2");
+  def_event_chain<3>(m, "_EventChain3");
   m.def("_potential_values", &potential_values, "kind"_a, "epsilon"_a, "sigma"_a, "cutoff"_a, "alpha"_a, "r"_a);
   m.def("_rng_sample", &rng_sample, "seed"_a, "n"_a, "kind"_a);
   m.def("_rng_raw", &rng_raw, "seed"_a, "skip"_a = 0);
