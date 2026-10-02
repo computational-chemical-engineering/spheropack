@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (2026-10-02)
 
 - Rejection-free Monte Carlo (`spheropack.rejection_free`), the method of Peters and
   de With, Phys. Rev. E 85, 026703 (2012): `System`, potentials `LennardJones`, `WCA`,
