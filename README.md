@@ -5,6 +5,7 @@
 [![CI](https://github.com/computational-chemical-engineering/spheropack/actions/workflows/test.yml/badge.svg)](https://github.com/computational-chemical-engineering/spheropack/actions/workflows/test.yml)
 [![Docs](https://github.com/computational-chemical-engineering/spheropack/actions/workflows/docs.yml/badge.svg)](https://computational-chemical-engineering.github.io/spheropack)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/computational-chemical-engineering/spheropack/blob/main/LICENSE)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23761193.svg)](https://doi.org/10.5281/zenodo.23761193)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 Random sphere packings in Python, generated with the event-driven
@@ -62,8 +63,9 @@ cd docs && sphinx-build -b html . _build/html
 
 ## Citing
 
-If you use spheropack, please cite it (see
-[CITATION.cff](https://github.com/computational-chemical-engineering/spheropack/blob/main/CITATION.cff)); for the rejection-free
+If you use spheropack, please cite it: [doi:10.5281/zenodo.23761193](https://doi.org/10.5281/zenodo.23761193)
+(all versions; see
+[CITATION.cff](https://github.com/computational-chemical-engineering/spheropack/blob/main/CITATION.cff)). For the rejection-free
 Monte Carlo method, cite Peters and de With (2012).
 
 ## Contributing

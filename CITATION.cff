@@ -2,6 +2,14 @@ cff-version: 1.2.0
 title: "spheropack: random sphere packings with the event-driven Lubachevsky-Stillinger algorithm"
 version: "0.2.1"
 date-released: "2026-10-29"
+doi: 10.5281/zenodo.23761193
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.23761193
+    description: Concept DOI, resolves to the latest version
+  - type: doi
+    value: 10.5281/zenodo.23761194
+    description: Version 0.2.1
 message: "If you use spheropack in your work, please cite the version you used."
 authors:
   - family-names: Peters
