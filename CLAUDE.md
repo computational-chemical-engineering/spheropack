@@ -58,5 +58,7 @@ release or a manual run (Pages source: GitHub Actions).
 2. Run the slow suite locally (`pytest -m slow`) and a manual `release.yml` run
    (optionally with upload to TestPyPI, then `pip install -i https://test.pypi.org/simple/ spheropack`).
 3. Publish a GitHub release with tag `vX.Y.Z`: builds wheels and sdist, uploads to
-   PyPI, deploys the docs. Never publish or make the repository public without the
+   PyPI, deploys the docs, and Zenodo archives the release (GitHub webhook; metadata
+   from CITATION.cff). Concept DOI 10.5281/zenodo.23761193 (latest version); each
+   release gets its own version DOI on Zenodo. Never publish or make the repository public without the
    user's approval.
