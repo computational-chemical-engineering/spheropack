@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1 (2026-10-29)
+
+- No code changes. First release archived on Zenodo, which gives spheropack a DOI
+  for citation.
+
 ## 0.2.0 (2026-10-02)
 
 - Rejection-free Monte Carlo (`spheropack.rejection_free`), the method of Peters and
